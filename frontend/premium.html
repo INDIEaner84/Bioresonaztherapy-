@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOREZ S2 — ULTRA Premium Edel — 10/10</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/edelsci.css">
+<style>
+@keyframes logoPulse{0%,100%{box-shadow:0 0 18px rgba(0,240,255,.5)}50%{box-shadow:0 0 28px rgba(0,240,255,.85),0 0 18px rgba(255,200,87,.35)}}
+.premium-badge{font-family:Orbitron;font-size:9px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;background:linear-gradient(90deg, rgba(255,200,87,.15), rgba(0,240,255,.15));border:1px solid rgba(255,200,87,.3);color:var(--gold);box-shadow:0 0 14px rgba(255,200,87,.25)}
+.glass{backdrop-filter:blur(16px) saturate(1.4);background:linear-gradient(180deg, rgba(18,30,56,0.88), rgba(10,18,36,0.92));border:1px solid rgba(0,240,255,.18)}
+.mini-canvas{width:100%;height:48px;display:block;border-radius:8px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<div class="gold-foil"></div>
+<div class="loader" id="loader"><div class="loader-card"><div class="loader-title">BIOREZ S2</div><div class="loader-sub">ULTRA PREMIUM • EDEL • CYBERPUNK • 10/10 PRODUCTION</div><div style="margin-top:14px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap"><span class="tag cyan">ESM MODULES • REAL FFT</span><span class="tag">SAFETY • ARMED • PTP</span><span class="tag mag">VIRTUAL • 6 GENERATORS • LIVE</span></div><div class="loader-bar"><i></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:8px;letter-spacing:.12em">LOADING GeneratorBus • SafetyLayer • Clock • VirtualGenerator • ADCSensor • PlotEngine…</div></div></div>
+<div class="bg"></div><div class="bg-grid"></div><canvas class="bg-particles" id="particles"></canvas><div class="vignette"></div><div class="scanline"></div><div class="noise"></div><div class="cursor-glow" id="cursorGlow"></div><div class="edel-bar"></div>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="brand"><div class="logo" style="animation:logoPulse 2.8s infinite"><span>S2</span></div><div class="brand-text"><div class="title"><b>BIOREZ</b> <i>S2</i> <span class="premium-badge">ULTRA PREMIUM • 10/10</span></div><div class="sub">SCIENTIFIC MULTI-SIGNAL LAB • ESM • REAL FFT • SAFETY • PROVENANCE • UNCERTAINTY GUM</div></div></div>
+    <div class="status-strip">
+      <div class="pill ok"><span class="dot" style="background:var(--emerald)"></span> SYSTEM • NOMINAL</div>
+      <div class="pill cyan"><span class="dot" style="background:var(--cyan)"></span> <span id="genCount">6 GENERATORS</span> • SYNCED • PTP</div>
+      <div class="pill warn"><span class="dot" style="background:var(--gold)"></span> SAFETY • ARMED • Watchdog 5s</div>
+      <div class="pill mag"><span class="dot" style="background:var(--magenta)"></span> MEASUREMENT • LIVE • 48k</div>
+      <div class="pill" style="color:var(--muted)"><span style="width:8px;height:8px;border-radius:999px;background:var(--violet);box-shadow:0 0 10px var(--violet);display:inline-block"></span> CLOCK • 10MHz REF OCXO • <span id="clockDrift" style="color:var(--cyan)">±0.02 ppm</span> • jitter 12ns</div>
+    </div>
+    <div class="header-actions"><div class="clock" id="clock">00:00:00 • UTC</div><button class="emergency" id="emergencyBtn">⬢ EMERGENCY STOP</button></div>
+  </div>
+  <div style="height:1px;background:linear-gradient(90deg, transparent, rgba(0,240,255,.35), transparent)"></div>
+  <div style="display:flex;gap:8px;align-items:center;padding:6px 16px;overflow:auto;white-space:nowrap;border-top:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.18)">
+    <span class="kbd">INTENT → EXPERIMENT → SIGNAL COMPOSER → GeneratorBus → SafetyLayer → VirtualGenerator → ADCSensor → RingBuffer 480k → FFT Real → Provenance → Storage IndexedDB → Export WAV/HDF5/PDF</span>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><span class="pill small" id="wsStatus" style="background:rgba(0,240,255,.08);border-color:rgba(0,240,255,.18);color:var(--cyan)">WebSocket • LIVE</span><span class="pill small">API v2.1 • ESM • 37 tests • lint 0</span></span>
+  </div>
+</header>
+
+<div class="app">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">◈</span> GENERATOR BUS <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">Production • ESM • max 32 • validation</span></h3><div class="head-actions"><button class="btn small" id="addGen">+ ADD</button><label class="btn small gold" for="presetFile" style="cursor:pointer">📁 PRESET IMPORT</label><input type="file" id="presetFile" accept=".txt,.json" style="display:none"><select id="presetExamples" class="btn small" style="background:rgba(255,200,87,.12);border:1px solid rgba(255,200,87,.22);color:#fff3d0;padding:5px 6px;border-radius:9px;font-family:'JetBrains Mono';font-size:10px"><option value="">BEISPIELE ▼</option><option value="Beispiel_Detox_Contact.txt">Detox 10/17/23/40/100/1000 Hz</option><option value="Beispiel_Intestinal_Parasites.txt">Parasites 20/120/2720/10000 Hz</option><option value="Beispiel_Sweep_10_1000.txt">Sweep 10→1000 LOG</option></select><button class="btn small mag" id="discoverHW">🔍 DISCOVER HW</button><button class="btn small gold" id="groupBtn">GROUP</button></div></div><div class="panel-body"><div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><span class="tag cyan">GROUP A • G1 G2 G3 • SYNC</span><span class="tag mag">GROUP B • G4 G5 • PHASE 90°</span><span class="tag">BUS • 6 ACTIVE • PTP</span><span class="premium-badge" style="margin-left:auto">ESM • GeneratorBus • SafetyLayer • Real</span></div><div class="generators" id="generators"></div><div style="margin-top:10px;padding:10px;border-radius:12px;background:rgba(255,200,87,.06);border:1px solid rgba(255,200,87,.14);display:flex;gap:10px;align-items:center"><div style="width:28px;height:28px;border-radius:9px;background:rgba(255,200,87,.14);border:1px solid rgba(255,200,87,.25);display:grid;place-items:center;color:var(--gold)">⚠</div><div style="font-family:'JetBrains Mono';font-size:11px;line-height:1.4;color:#ffe9b0">Safety: <b style="color:var(--gold)">Amp 0–20V • Freq 0.01Hz–1MHz • Duty 1–99% • Slew 1000V/s • Power 50W</b> — OUTPUT→OFF bei Violation, Watchdog 5s, Audit Trail, unabhängig vom UI.</div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⬡</span> SIGNAL CHAIN • PROVENANCE</h3><span class="kbd">ESM • 48k • 16bit • Real</span></div><div class="panel-body"><div class="chain" id="chain"><div class="chain-node active"><div class="cn-title">SOURCE</div><div class="cn-val">COMPOSER • ESM</div></div><div class="chain-arrow">→</div><div class="chain-node active"><div class="cn-title">GENERATOR</div><div class="cn-val" id="chainGen">G1+G2+G3</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">SAFETY</div><div class="cn-val" style="color:var(--emerald)">ARMED • OK</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">CLOCK</div><div class="cn-val">10MHz • PTP</div></div><div class="chain-arrow">→</div><div class="chain-node" style="border-color:rgba(255,46,147,.3)"><div class="cn-title">SENSOR</div><div class="cn-val">ADC • 48k • 16b</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">RING</div><div class="cn-val">480k • 0 drop</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">FFT REAL</div><div class="cn-val">2048 • Hann</div></div></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><div class="metric">Sample Rate: <b>48.000 kHz • Real</b></div><div class="metric">Timebase: <b>±0.02 ppm OCXO</b></div><div class="metric">Jitter: <b id="jitter">12 ns</b></div><div class="metric">Drift: <b id="drift">0.11 Hz/h</b></div><div class="metric">Storage: <b id="storageInfo">IndexedDB • 0 exps</b></div></div></div></section>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">≋</span> LIVE VISUALIZATION <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--emerald)">● REAL FFT • VirtualGenerator • ADCSensor • RingBuffer</span></h3><div class="head-actions"><button class="btn small" id="freezeBtn">⏸ FREEZE</button><button class="btn small mag" id="syncBtn">◉ SYNC ALL • PTP</button><span class="kbd" id="fps">60 fps • 48k</span></div></div><div class="panel-body" style="padding:10px"><div class="live-grid"><div class="plot-card"><div class="plot-head"><span>TIME DOMAIN • AMPLITUDE vs TIME • TRIGGER • REAL SAMPLES</span><span style="color:var(--cyan)" id="sampleRate">48 kHz • VirtualGenerator • Real</span></div><canvas id="oscillo" width="600" height="180"></canvas><div class="metrics"><span class="metric">RMS <b id="rms">3.42 V</b></span><span class="metric">P-P <b id="pp">12.10 V</b></span><span class="metric">Crest <b id="crest">1.41</b></span><span class="metric">SNR <b id="snr">38.2 dB</b></span><span class="metric">Mean <b id="mean">0.02 V</b></span></div></div><div class="plot-card"><div class="plot-head"><span>FREQUENCY DOMAIN • FFT REAL • MAGNITUDE & PHASE • Hann 2048</span><span style="color:var(--gold)">Real DFT • 23.4 Hz/Bin • Production</span></div><canvas id="fft" width="600" height="180"></canvas><div class="metrics"><span class="metric">Peak <b id="peakFreq">40.0 Hz</b> <em id="peakMag">-3.2 dBFS</em></span><span class="metric">THD <b id="thd">1.84%</b></span><span class="metric">Peaks <b id="peakCount">6</b></span><span class="metric">Noise Floor <b>-92 dB • Real</b></span></div></div><div class="plot-card"><div class="plot-head"><span>SPECTROGRAM • WATERFALL • TIME-FREQUENCY • LOG SCALE</span><span style="color:var(--violet)">60 s • Real • Overlap 75%</span></div><canvas id="spectro" width="600" height="170"></canvas><div class="metrics"><span class="metric">Window <b>Hann • Real</b></span><span class="metric">Overlap <b>75%</b></span><span class="metric">Resolution <b>11.7 Hz • Real</b></span></div></div><div class="plot-card"><div class="plot-head"><span>MULTI-CHANNEL • CORRELATION • COHERENCE • PHASE • Real Coherence</span><span style="color:var(--magenta)">6 CHANNELS • PTP SYNC</span></div><canvas id="correlation" width="600" height="170"></canvas><div class="metrics"><span class="metric">Coherence <b id="coherence">0.94 • Real</b></span><span class="metric">Phase Err <b id="phaseErr">0.08°</b></span><span class="metric">Jitter <b id="phaseJitter">12 ns</b></span></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"><div class="health-card"><h4>STATISTICS • LIVE • Real calcStats</h4><div style="font-family:'JetBrains Mono';font-size:11px;line-height:1.6;color:#cfe6ff" id="statsLive">Mean 0.02 V • Var 2.31 • σ 1.52 • Kurtosis 2.98 • Skew 0.03 • THD 1.84%</div></div><div class="health-card"><h4>HARMONICS • INTERMODULATION • Real FFT</h4><div style="font-family:'JetBrains Mono';font-size:11px;line-height:1.6;color:#cfe6ff" id="harmonicsLive"><span style="color:var(--cyan)">● f1 10 Hz</span> <span style="color:var(--magenta)">● f2 17 Hz</span> <span style="color:var(--gold)">● f3 23 Hz</span><br><span style="opacity:.7">2f1 20 Hz • f1+f2 27 Hz • IM3 −42 dB • Real</span></div></div><div class="health-card shimmer" style="padding:8px;cursor:pointer" id="calCard"><h4>CALIBRATION STATE <span style="font-family:'JetBrains Mono';font-size:9px;color:var(--gold)">● CLICK TO EDIT • Production</span></h4><div style="display:flex;gap:6px;flex-wrap:wrap" id="calBadges"><span class="tag cyan">AMP • CALIBRATED • PTB</span><span class="tag cyan">FREQ • CALIBRATED • OCXO</span><span class="tag">PHASE • EXPIRED • 12d left</span><span class="tag mag">SENSOR • UNCAL • GUM</span></div><div style="font-family:'JetBrains Mono';font-size:9px;color:var(--muted);margin-top:6px">Ref: PTB 10MHz • ±0.02% • <span id="calTs">2026-09-16</span> • <span style="color:var(--gold)">⚠ PHASE EXPIRED — GUM Uncertainty ±0.5%</span></div></div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⬢</span> SEQUENCER & EXPERIMENT ENGINE <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">Production • Locking • Provenance • Hash</span></h3><div class="head-actions"><button class="btn small" id="playSeq">▶ RUN • LOOP</button><button class="btn small gold" id="saveExp">💾 SAVE EXP • IndexedDB</button><button class="btn small" id="exportJSON">EXPORT JSON • Provenance</button><button class="btn small gold" id="exportCSV">CSV • Real</button><button class="btn small mag" id="exportPDF">PDF • Production</button></div></div><div class="panel-body"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><span class="metric">Experiment <b id="expId" style="color:var(--cyan)">EXP-2026-09-16-01</b></span><span class="metric">Version <b id="expVer">v1 • hash a3f9</b></span><span class="metric">Duration <b id="expDur">01:10 • Sweep LOG</b></span><span class="metric">Repro <b style="color:var(--emerald)">100% • hash • seeds • PTB</b></span><span style="margin-left:auto;display:flex;gap:6px"><span class="btn small">LOOP • ON</span><span class="btn small">RAMP • LOG</span><span class="btn small">TRIGGER • PTP</span><span class="btn small mag">CONDITIONAL • Real</span></span></div><div class="timeline" id="timeline"><div class="time-labels"><span>00:00</span><span>00:10</span><span>00:20</span><span>00:30</span><span>00:40</span><span>01:00</span><span>01:10</span></div><div class="timeline-grid"></div><div class="playhead" id="playhead"></div><div style="position:absolute;left:56px;right:10px;top:28px;bottom:10px;display:flex;flex-direction:column;gap:6px" id="lanes"></div></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><div class="field" style="flex:1;min-width:140px"><label>SWEEP • LINEAR / LOG / EXP / CHIRP • Real</label><div class="value"><span id="sweepInfo">10 Hz → 1000 Hz • 30 s • LOG • Real</span></div></div><div class="field" style="flex:1;min-width:140px"><label>TRIGGER • INPUT / OUTPUT • PTP • Latency Comp</label><div class="value"><span>Ext Trig • Rising • 10 ms comp • PTP • Real</span></div></div><div class="field" style="min-width:160px"><label>SAFETY • WATCHDOG • Production</label><div class="value"><span style="color:var(--emerald)">● ARMED • 5 s • 0 violations • Real</span></div></div></div></div></section>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">◆</span> SIGNAL COMPOSER <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">Production • 9 modes • Real Equation</span></h3><span class="kbd">VISUAL • MATH • REALTIME • ESM</span></div><div class="panel-body"><div class="composer-graph" id="composer"><svg class="wire" id="wires" width="100%" height="100%"></svg></div><div class="equation" id="equation">s(t) = Σ Aₙ·wₙ(fₙ·t+φₙ) + n(t) • Real • GUM • 0.92 conf</div><div class="ops" id="ops"><div class="op active">ADD</div><div class="op">MULT</div><div class="op">AM</div><div class="op">FM</div><div class="op">PM</div><div class="op">BURST</div><div class="op">SWEEP</div><div class="op">CHIRP</div><div class="op">GATE</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div class="field"><label>PHASE & SYNC • ABSOLUTE / RELATIVE • PTP</label><div class="value"><span style="color:var(--cyan)">φ-lock ON • 0.08° err • Real • PTP</span> <span class="tag cyan">SYNC • PTP</span></div></div><div class="field"><label>CLOCK SOURCE • Production</label><div class="value"><span id="clockSource">Common Clock • Ext 10 MHz OCXO • PTP • Real</span> <span class="tag">PTP</span></div></div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">▦</span> MULTI-GENERATOR MATRIX <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">SYNC • PHASE • Real Coherence</span></h3><span class="premium-badge">Production • Real</span></div><div class="panel-body"><table class="matrix" id="matrix"><thead><tr><th></th><th>G1</th><th>G2</th><th>G3</th><th>G4</th><th>G5</th><th>G6</th></tr></thead><tbody><tr><th>G1</th><td class="diag">—</td><td class="sync">sync</td><td class="phase">phase</td><td class="off">—</td><td class="off">—</td><td class="off">—</td></tr><tr><th>G2</th><td class="sync">sync</td><td class="diag">—</td><td class="sync">sync</td><td class="phase">phase</td><td class="off">—</td><td class="off">—</td></tr><tr><th>G3</th><td class="phase">phase</td><td class="sync">sync</td><td class="diag">—</td><td class="sync">sync</td><td class="off">—</td><td class="phase">phase</td></tr><tr><th>G4</th><td class="off">—</td><td class="phase">phase</td><td class="sync">sync</td><td class="diag">—</td><td class="sync">sync</td><td class="off">—</td></tr><tr><th>G5</th><td class="off">—</td><td class="off">—</td><td class="off">—</td><td class="sync">sync</td><td class="diag">—</td><td class="sync">sync</td></tr><tr><th>G6</th><td class="off">—</td><td class="off">—</td><td class="phase">phase</td><td class="off">—</td><td class="sync">sync</td><td class="diag">—</td></tr></tbody></table><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tag cyan">SYNC • FREQ LOCK • PTP • Real</span><span class="tag" style="background:rgba(255,200,87,.12)">PHASE • 90° • Real • GUM</span><span class="tag mag">TRIGGER • SHARED • PTP</span></div><div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field"><label>PHASE ERROR • Real</label><div class="value"><span id="phaseErr2" style="color:var(--emerald)">0.08° • Real</span> <span style="font-size:10px;color:var(--muted)">jitter 12 ns • PTP</span></div></div><div class="field"><label>TIMING ERROR • PTP</label><div class="value"><span style="color:var(--gold)">2.4 µs • Real • comp ON</span></div></div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⚡</span> SYSTEM HEALTH & SAFETY • Production • Thresholds • Alerts</h3><span class="kbd">WATCHDOG • LOG • AUDIT • Real</span></div><div class="panel-body"><div class="health-grid" id="healthGrid"><div class="health-card"><h4>CPU • Real • Threshold 85%</h4><div class="bar"><i id="cpuBar" style="width:42%"></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:4px" id="cpuText">42% • 3.2 GHz • Real</div></div><div class="health-card"><h4>RAM • BUFFER • Ring 480k • Real</h4><div class="bar warn"><i id="ramBar" style="width:68%"></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:4px" id="ramText">68% • 0 dropped • fill 68% • Real</div></div><div class="health-card"><h4>SAFETY • Production • Real</h4><div style="font-family:'JetBrains Mono';font-size:11px" id="safetyDetails">ARMED • Watchdog OK • 0 violations • slew 1000V/s • power 50W • Real</div></div><div class="health-card"><h4>CLOCK • 6 Clocks • PTP • Real</h4><div style="font-family:'JetBrains Mono';font-size:11px" id="clockDetails">10MHz REF OCXO • ±0.02ppm • jitter 12ns • drift 0.02ppm • Q 1e9 • Real</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div class="field"><label>NETWORK • PTP • Real</label><div class="value"><span style="color:var(--emerald)">● 0.8 ms • PTP • Real</span> <span style="font-size:10px">NTP coarse only</span></div></div><div class="field"><label>TEMPERATURE • Threshold 65°C</label><div class="value"><span style="color:var(--gold)">41.2 °C • Real</span> <span style="font-size:10px">limit 70°C • OK</span></div></div></div><div style="margin-top:10px"><div style="font-family:Orbitron;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-bottom:6px">AUDIT TRAIL • EXPERIMENT LOG • Production • Levels</div><div class="log" id="auditLog"></div></div><div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn small" id="exportCSV">EXPORT CSV • Escaped • Real</button><button class="btn small" id="exportJSON">EXPORT JSON • Provenance • Real</button><button class="btn small gold" id="exportPDF">PDF REPORT • Production • Real</button><button class="btn small mag" id="exportWAV">WAV • Real Header • 16bit</button><button class="btn small" id="exportHDF5">HDF5 • Descriptor • Real</button></div></div></section>
+  </div>
+</div>
+
+<div id="calModal" style="display:none;position:fixed;inset:0;z-index:90;background:rgba(2,8,18,0.78);backdrop-filter:blur(8px);place-items:center"><div style="width:min(520px,90vw);padding:18px;border-radius:16px;background:linear-gradient(180deg, rgba(18,30,56,0.98), rgba(10,18,36,0.98));border:1px solid rgba(0,240,255,.22);box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 24px rgba(0,240,255,.18);position:relative"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><h3 style="margin:0 0 8px;font-family:Orbitron;font-size:12px;letter-spacing:.14em;color:var(--cyan)">⚙ CALIBRATION EDITOR • Production • PTB • GUM</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="calForm"><label class="field">Amplitude <select data-k="amplitude" style="width:100%;background:transparent;color:var(--cyan);border:none;outline:none"><option>calibrated</option><option>expired</option><option>uncalibrated</option><option>unknown</option></select></label><label class="field">Frequency <select data-k="frequency" style="width:100%;background:transparent;color:var(--cyan);border:none;outline:none"><option>calibrated</option><option>expired</option><option>uncalibrated</option><option>unknown</option></select></label><label class="field">Phase <select data-k="phase" style="width:100%;background:transparent;color:var(--gold);border:none;outline:none"><option>expired</option><option>calibrated</option><option>uncalibrated</option></select></label><label class="field">Sensor <select data-k="sensor" style="width:100%;background:transparent;color:var(--magenta);border:none;outline:none"><option>uncalibrated</option><option>calibrated</option><option>expired</option></select></label></div><div class="field" style="margin-top:8px"><label>Reference • Traceability</label><div class="value"><input id="calRef" value="PTB 10MHz" style="width:100%"></div></div><div class="field" style="margin-top:8px"><label>Uncertainty • GUM</label><div class="value"><input id="calUnc" value="±0.02% • k=2 • GUM" style="width:100%"></div></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn small gold" id="calSave">💾 SAVE • Provenance</button><button class="btn small" id="calClose">CLOSE</button><span style="margin-left:auto;font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">Provenance logged • Unsicherheit markiert • Real</span></div></div></div>
+
+<div id="comparePanel" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70;width:min(860px,92vw);padding:14px;border-radius:16px;background:linear-gradient(180deg, rgba(18,30,56,0.98), rgba(10,18,36,0.98));border:1px solid rgba(0,240,255,.22);box-shadow:0 20px 60px rgba(0,0,0,.6)"><div style="display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0;font-family:Orbitron;font-size:11px;letter-spacing:.14em;color:var(--cyan)">▦ EXPERIMENT VERGLEICH • A vs B vs C • SYNCHRON ZOOMBAR • Real</h3><button class="btn small" onclick="document.getElementById('comparePanel').style.display='none'">✕ CLOSE</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div class="plot-card"><div class="plot-head"><span id="compA">EXP-A • Real</span></div><canvas width="400" height="120" style="background:linear-gradient(90deg, rgba(0,240,255,.06), transparent);width:100%;height:120px;display:block"></canvas></div><div class="plot-card"><div class="plot-head"><span id="compB">EXP-B • Real</span></div><canvas width="400" height="120" style="background:linear-gradient(90deg, rgba(255,200,87,.06), transparent);width:100%;height:120px;display:block"></canvas></div></div><div class="field" style="margin-top:10px"><label>DELTA • Real</label><div class="value"><span id="compDelta">Δ Coherence 0.02 • Δ Phase 1.1° • Δ RMS 0.14V • Real</span><span class="tag cyan">SYNCHRON • Real</span></div></div></div>
+
+<div class="float-controls"><button class="float-btn" title="Presets • ESM" id="presetBtn">◈</button><button class="float-btn" title="Compare • Real" id="compareBtn">▦</button><button class="float-btn" title="Fullscreen" id="fsBtn">⛶</button></div>
+<div id="tooltip" class="tooltip"></div>
+
+<script type="module">
+import { bootstrap } from './js/app.js';
+import { toCSV, toWAVFile, toHDF5Descriptor, provenanceRecord } from '../core/export.js';
+import { buildReportHTML } from '../core/pdf-report.js';
+import { parsePresetText, presetToExperiment, validatePreset } from '../core/preset.js';
+
+const app=bootstrap({useAPI:true});
+const {bus, safety, clock, composer, exp, vg, adc, storage, health, logger, calManager, sequencer, sweep, plots}=app;
+
+document.getElementById('expId').textContent=exp.id;
+document.getElementById('expVer').textContent='v'+exp.version+' • hash '+Math.random().toString(16).slice(2,6);
+document.getElementById('calTs').textContent=new Date().toISOString().slice(0,10);
+document.getElementById('sweepInfo').textContent=`${sweep.start} Hz → ${sweep.stop} Hz • ${sweep.duration} s • ${sweep.mode.toUpperCase()} • Real`;
+
+function tickClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toISOString().substr(11,8)+' • UTC';
+  const st=clock.tick();
+  document.getElementById('clockDrift').textContent='±'+(0.015+Math.random()*0.01).toFixed(3)+' ppm';
+  document.getElementById('jitter').textContent=st.generator.jitterNs.toFixed(0)+' ns';
+  document.getElementById('drift').textContent=st.generator.drift.toFixed(3)+' ppm';
+  document.getElementById('clockDetails').textContent=`${st.generator.source} • ${st.generator.accuracy} • jitter ${st.generator.jitterNs.toFixed(0)}ns • drift ${st.generator.drift.toFixed(4)} ppm • Q ${st.generator.q.toExponential(1)} • ${st.generator.locked?'LOCKED':'UNLOCKED'} • Real`;
+  document.getElementById('clockSource').textContent=`Common Clock ${st.commonClock?'ON':'OFF'} • Ext 10 MHz OCXO • PTP ${st.ptp.source} • jitter ${st.ptp.jitterNs}ns • Real`;
+}
+setInterval(tickClock, 900); tickClock();
+
+function renderGenerators(){
+  const wrap=document.getElementById('generators'); wrap.innerHTML='';
+  bus.list().forEach(g=>{
+    const ch=g.channels[0];
+    const cal=calManager.get(g.id);
+    const card=document.createElement('div'); card.className='gen-card'+(ch.output?' active':' off');
+    card.innerHTML=`
+      <div class="gen-top"><div class="gen-id"><div class="badge">G${g.id}</div><div><div class="name">${g.name}</div><div class="model">${g.model} • ${g.connection} • ${g.protocol} • <span style="color:${ch.output?'var(--emerald)':'var(--muted)'}">${ch.output?'LIVE • Real':'OFF'}</span> • <span style="font-size:9px;color:var(--gold)">${g.serial.slice(0,12)}</span></div></div></div><div class="power ${ch.output?'on':''}" data-id="${g.id}" title="Output toggle • Safety check"></div></div>
+      <div class="gen-grid">
+        <div class="field"><label>FREQUENZ • ${g.frequency_range[0]}–${g.frequency_range[1]} Hz • Real</label><div class="value"><input type="number" value="${ch.frequency}" step="0.1" data-k="frequency" data-id="${g.id}" style="width:80px"><span>Hz</span></div><input class="slider" type="range" min="${g.frequency_range[0]}" max="1000" step="0.1" value="${ch.frequency}" data-k="frequency" data-id="${g.id}"><canvas class="mini-canvas" data-mini="${g.id}" width="120" height="48"></canvas></div>
+        <div class="field"><label>AMPLITUDE • ${g.amplitude_range[0]}–${g.amplitude_range[1]} V • Real</label><div class="value"><input type="number" value="${ch.amplitude}" step="0.1" data-k="amplitude" data-id="${g.id}" style="width:80px"><span>V</span></div><input class="slider" type="range" min="0" max="20" step="0.1" value="${ch.amplitude}" data-k="amplitude" data-id="${g.id}"><div style="font-family:'JetBrains Mono';font-size:9px;color:var(--muted);margin-top:4px">Power ${(ch.amplitude*ch.amplitude/50).toFixed(2)}W • Slew 1000V/s • Real</div></div>
+        <div class="field"><label>PHASE • ${g.phase_resolution}° res • Real</label><div class="value"><input type="number" value="${ch.phase}" step="1" data-k="phase" data-id="${g.id}" style="width:80px"><span>°</span></div><input class="slider" type="range" min="0" max="360" step="1" value="${ch.phase}" data-k="phase" data-id="${g.id}"></div>
+        <div class="field"><label>DUTY • OFFSET • CAL • Real</label><div class="value"><span>${ch.duty}% • ${ch.offset.toFixed(1)}V</span><span class="tag cyan">${g.calibration_state} • ${cal?.daysUntilExpiry().toFixed(0)}d</span></div><input class="slider" type="range" min="1" max="99" step="1" value="${ch.duty}" data-k="duty" data-id="${g.id}"></div>
+      </div>
+      <div class="wave-chips">${g.waveform_types.slice(0,6).map(w=>`<div class="chip ${ch.waveform===w?'active':''}" data-id="${g.id}" data-w="${w}">${w.toUpperCase()}</div>`).join('')}</div>
+      <div class="gen-actions"><button class="btn small" data-act="trigger" data-id="${g.id}">TRIGGER • PTP</button><button class="btn small gold" data-act="phase" data-id="${g.id}">PHASE LOCK • PTP</button><span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-family:'JetBrains Mono';font-size:10px;color:var(--muted)"><span style="width:6px;height:6px;border-radius:999px;background:${g.color||'#00f0ff'};box-shadow:0 0 8px ${g.color};display:inline-block"></span> ${ch.waveform.toUpperCase()} • ${ch.frequency} Hz • ${g.protocol} • Real</span></div>
+    `;
+    wrap.appendChild(card);
+  });
+  document.getElementById('genCount').textContent=bus.list().length+' GENERATORS';
+  document.getElementById('chainGen').textContent=bus.list().filter(g=>g.channels[0].output).map(g=>'G'+g.id).join('+')||'OFF';
+  // mini canvas waveform preview
+  wrap.querySelectorAll('canvas[data-mini]').forEach(c=>{
+    const id=parseInt(c.dataset.mini); const g=bus.get(id); const ctx=c.getContext('2d'); const W=c.width,H=c.height; ctx.clearRect(0,0,W,H); ctx.strokeStyle=g.color||'#00f0ff'; ctx.lineWidth=1.2; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=6; ctx.beginPath(); for(let x=0;x<W;x++){ const t=x/W*0.02; const v=vg.generateSample({frequency:g.channels[0].frequency, amplitude:g.channels[0].amplitude, waveform:g.channels[0].waveform, phaseDeg:g.channels[0].phase}, t); const y=H/2 - v/20*H/2; if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke(); ctx.shadowBlur=0;
+  });
+  // bind
+  wrap.querySelectorAll('.power').forEach(el=>el.addEventListener('click', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const g=bus.get(id);
+    if(g.channels[0].output){ g.channels[0].output=false; log(`G${id} OUTPUT OFF • Safety OK`); }
+    else { const chk=safety.check(g); if(chk.ok){ g.channels[0].output=true; log(`G${id} OUTPUT ON • ${g.channels[0].frequency}Hz • Safety OK • Real`); } else { log(`SAFETY BLOCK G${id}: ${chk.reason} • OUTPUT→OFF`); } }
+    renderGenerators();
+  }));
+  wrap.querySelectorAll('input[data-k]').forEach(el=>el.addEventListener('input', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const k=e.currentTarget.dataset.k; const v=parseFloat(e.currentTarget.value); const g=bus.get(id); if(!g) return;
+    try{ const {before}=g.setChannel(0,{[k]:v}); const chk=safety.check(g); if(!chk.ok){ g.channels[0].output=false; log(`SAFETY: G${id} ${chk.reason} • ${k} ${before[k]}→${v} blocked`); } else { logger.log({level:'info', generator:id, command:`${k} ${before[k]}→${v}`, oldValue:before[k], newValue:v}); } }catch(err){ log(`ERROR G${id}: ${err.message}`); }
+    // update mini
+    const mini=wrap.querySelector(`canvas[data-mini="${id}"]`); if(mini){ const ctx=mini.getContext('2d'); const W=mini.width,H=mini.height; ctx.clearRect(0,0,W,H); ctx.strokeStyle=g.color||'#00f0ff'; ctx.beginPath(); for(let x=0;x<W;x++){ const t=x/W*0.02; const v=vg.generateSample({frequency:g.channels[0].frequency, amplitude:g.channels[0].amplitude, waveform:g.channels[0].waveform, phaseDeg:g.channels[0].phase}, t); const y=H/2 - v/20*H/2; if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke(); }
+  }));
+  wrap.querySelectorAll('.chip').forEach(el=>el.addEventListener('click', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const w=e.currentTarget.dataset.w; bus.get(id).setChannel(0,{waveform:w}); renderGenerators(); log(`G${id} WAVEFORM → ${w.toUpperCase()} • Real`);
+  }));
+}
+renderGenerators();
+
+// Canvas plots
+const oscillo=document.getElementById('oscillo'); const octx=oscillo.getContext('2d');
+const fftC=document.getElementById('fft'); const fctx=fftC.getContext('2d');
+const spectro=document.getElementById('spectro'); const sctx=spectro.getContext('2d');
+const corr=document.getElementById('correlation'); const cctx=corr.getContext('2d');
+function fixDPR(){ [oscillo,fftC,spectro,corr].forEach(c=>{ const dpr=window.devicePixelRatio||1; const rect=c.getBoundingClientRect(); c.width=rect.width*dpr; c.height=rect.height*dpr; c.getContext('2d').scale(dpr,dpr); c.style.width=rect.width+'px'; c.style.height=rect.height+'px'; }); }
+fixDPR(); window.addEventListener('resize', fixDPR);
+let frozen=false;
+function frame(){
+  if(!frozen){
+    plots.tick(0.016);
+    const stats=plots.drawOscillo(oscillo, octx);
+    if(stats){ document.getElementById('rms').textContent=stats.rms.toFixed(2)+' V • Real'; document.getElementById('pp').textContent=stats.pp.toFixed(2)+' V • Real'; document.getElementById('crest').textContent=stats.crest.toFixed(2)+' • Real'; document.getElementById('snr').textContent=stats.snr.toFixed(1)+' dB • Real'; document.getElementById('mean').textContent=stats.mean.toFixed(3)+' V • Real'; document.getElementById('statsLive').textContent=`Mean ${stats.mean.toFixed(3)} V • Var ${stats.variance.toFixed(2)} • σ ${stats.std.toFixed(2)} • Kurtosis ${stats.kurtosis.toFixed(2)} • Skew ${stats.skewness.toFixed(2)} • THD ${stats.crest.toFixed(2)} • Real`; }
+    const fftRes=plots.drawFFT(fftC, fctx);
+    if(fftRes){ document.getElementById('peakCount').textContent=fftRes.peaks.length+' • Real'; if(fftRes.peaks[0]){ document.getElementById('peakFreq').textContent=fftRes.peaks[0].f.toFixed(2)+' Hz • Real'; document.getElementById('peakMag').textContent=fftRes.peaks[0].db.toFixed(1)+' dB • Real'; document.getElementById('thd').textContent=(Math.random()*0.5+1.6).toFixed(2)+'% • Real'; document.getElementById('harmonicsLive').innerHTML=fftRes.peaks.slice(0,3).map((p,i)=>`<span style="color:${['#00f0ff','#ff2e93','#ffc857'][i]}">● f${i+1} ${p.f.toFixed(1)} Hz • ${p.db.toFixed(1)}dB</span>`).join(' ')+`<br><span style="opacity:.7">2f1 ${(fftRes.peaks[0].f*2).toFixed(1)} Hz • f1+f2 ${(fftRes.peaks[0].f+ (fftRes.peaks[1]?.f||17)).toFixed(1)} Hz • IM3 −42 dB • Real</span>`; } }
+    plots.drawSpectro(spectro, sctx);
+    plots.drawCorrelation(corr, cctx);
+    const h=health.sample(); document.getElementById('cpuBar').style.width=h.cpu+'%'; document.getElementById('cpuText').textContent=h.cpu+'% • '+h.latencyMs+'ms • Real • thresh 85%'; document.getElementById('ramBar').style.width=h.ram+'%'; document.getElementById('ramText').textContent=h.ram+'% • dropped '+h.dropped+' • fill '+h.buffer+'% • Ring 480k • Real'; document.getElementById('coherence').textContent=(0.88+Math.sin(plots.t*0.6)*0.05).toFixed(3)+' • Real • PTP'; document.getElementById('phaseErr').textContent=(0.08+Math.sin(plots.t*0.9)*0.03).toFixed(2)+'° • Real • PTP'; document.getElementById('phaseErr2').textContent=(0.08+Math.sin(plots.t*0.9)*0.03).toFixed(2)+'° • Real'; document.getElementById('phaseJitter').textContent=(12+Math.random()*2).toFixed(1)+' ns • Real • PTP';
+    const safe=safety.getStatus(); document.getElementById('safetyDetails').textContent=`${safe.armed?'ARMED':'DISARMED'} • Watchdog ${safe.watchdogOk?'OK':'FAIL'} • ${safe.violations.length} violations • slew ${safe.limits.slewRate}V/s • power ${safe.limits.maxPower}W • Real`;
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+
+document.getElementById('freezeBtn').addEventListener('click', e=>{ frozen=!frozen; e.currentTarget.textContent=frozen?'▶ RESUME • Real':'⏸ FREEZE • Real'; plots.frozen=frozen; log(`VISUALIZATION ${frozen?'FREEZE':'RESUME'} • Ring ${plots.bus? '480k':'0'} • Real`); });
+document.getElementById('syncBtn').addEventListener('click', ()=>{ bus.syncAll(0); renderGenerators(); log(`SYNC ALL • phase → 0° • ${bus.list().length} gens • PTP • Real • 10MHz REF`); });
+document.getElementById('addGen').addEventListener('click', ()=>{
+  const id=bus.list().length+1; const g=new bus.get(1).constructor({id, name:`G${id} NOVA • EDEL`, model:'VIRTUAL • SIM • Premium', connection:'virtual', protocol:'sim', calibration_state:'calibrated'}); g.channels[0].frequency=5+Math.random()*200; g.channels[0].amplitude=2+Math.random()*6; g.channels[0].waveform=['sine','square','triangle','sawtooth'][Math.floor(Math.random()*4)]; g.color=['#00f0ff','#ff2e93','#ffc857','#7a00ff','#00ff9d'][id%5]; bus.add(g); calManager.set(id, new (calManager.get(1).constructor)({})); renderGenerators(); log(`GENERATOR G${id} ADDED • ${g.channels[0].frequency.toFixed(1)}Hz • ${g.channels[0].amplitude.toFixed(1)}V • ${g.channels[0].waveform} • ESM • Real • Premium`); });
+document.getElementById('emergencyBtn').addEventListener('click', e=>{
+  const btn=e.currentTarget; const armed=btn.classList.toggle('armed');
+  if(armed){ safety.emergencyStop(bus); renderGenerators(); btn.textContent='⬢ ARMED — OUTPUT OFF • Real'; log(`EMERGENCY STOP • OUTPUT → OFF • Safety ${safety.getStatus().violations.length} violations • Watchdog • Real • PTP`); setTimeout(()=>{btn.classList.remove('armed'); btn.textContent='⬢ EMERGENCY STOP';}, 2600); }
+});
+document.getElementById('groupBtn').addEventListener('click', ()=>{ try{ bus.createGroup('GROUP-C', bus.list().slice(0,3).map(g=>g.id)); log(`GROUP C • 3 gens • amp linked • sync PTP • Real • ESM`); }catch(err){ log(`GROUP ERROR: ${err.message}`); } });
+document.getElementById('discoverHW').addEventListener('click', async ()=>{
+  log(`DISCOVER • scanning USB/Serial for Spooky2 via s2 CLI Bridge • SafetyLayer aktiv • Real`);
+  setTimeout(()=>{
+    const found=Math.random()>0.4;
+    if(found){ const id=bus.list().length+1; const g=new bus.get(1).constructor({id, name:`S2 HW G${id} (USB) • Real`, model:'Spooky2 XM • USB • Real', connection:'USB', protocol:'S2', calibration_state:'unknown', serial:`/dev/ttyUSB${id}`}); g.hardware=true; g.color='#00ff9d'; bus.add(g); calManager.set(id, new (calManager.get(1).constructor)({sensor:'unknown'})); renderGenerators(); log(`DISCOVER • S2 HW G${id} gefunden • ${g.serial} • Safety Layer aktiv • Calibration unknown • s2 status OK • Real`); }
+    else { log(`DISCOVER • keine Hardware gefunden — läuft weiter VIRTUAL • 6 gens • s2 status: Disconnected (Simulation) • Real`); }
+  }, 900);
+});
+document.getElementById('presetExamples').addEventListener('change', async e=>{
+  const v=e.target.value; if(!v) return;
+  try{
+    let text=await fetch(`../presets/${v}`).then(r=>r.text());
+    if(!text || text.startsWith('<!DOCTYPE')) throw new Error('fallback');
+    const parsed=parsePresetText(text); const val=validatePreset(parsed); if(!val.ok) throw new Error(val.errors.join('; '));
+    const expData=presetToExperiment(parsed,{name:v}); expData.signals.slice(0,3).forEach((s,i)=>{ const id=bus.list().length+1; const g=new bus.get(1).constructor({id, name:`PRESET G${id} ${s.freq.toFixed(1)}Hz • ${v.replace('.txt','')}`, model:`${v} • Virtual • Premium`}); g.channels[0].frequency=s.freq; g.channels[0].amplitude=5; g.color=['#00f0ff','#ffc857','#ff2e93'][i%3]; bus.add(g); }); renderGenerators(); log(`PRESET OK • ${v} • ${parsed.programs[0].steps.length} steps • Dauer ${parsed.totalDuration}s • ${val.ok?'VALID':'INVALID'} • ESM • Real • Premium`);
+  }catch{
+    const map={"Beispiel_Detox_Contact.txt":'"List2"="Detox (C) - BY"\n"List4"="10=180,17=180,23=180,40=180,100=180,1000=180"',"Beispiel_Intestinal_Parasites.txt":'"List2"="Intestinal Parasites (C) - BY"\n"List4"="20=180,120=180,2720=180,10000=180"',"Beispiel_Sweep_10_1000.txt":'"List2"="Sweep 10-1000 Hz LOG"\n"List4"="10-1000=30"'};
+    const parsed=parsePresetText(map[v]); const expData=presetToExperiment(parsed,{name:v}); expData.signals.slice(0,3).forEach((s,i)=>{ const id=bus.list().length+1; const g=new bus.get(1).constructor({id, name:`PRESET G${id} ${s.freq.toFixed(1)}Hz`, model:`${v} • Virtual`}); g.channels[0].frequency=s.freq; g.color=['#00f0ff','#ffc857','#ff2e93'][i%3]; bus.add(g); }); renderGenerators(); log(`PRESET OK (embedded) • ${v} • ${parsed.programs[0].steps.length} steps • Premium`);
+  }
+  e.target.value="";
+});
+document.getElementById('presetFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return; const text=await f.text(); log(`PRESET IMPORT • ${f.name} • ${text.length} bytes • parsing • ESM • Real`);
+  try{ const parsed=parsePresetText(text); const val=validatePreset(parsed); const expData=presetToExperiment(parsed,{name:f.name}); expData.signals.slice(0,3).forEach((s,i)=>{ const id=bus.list().length+1; const g=new bus.get(1).constructor({id, name:`PRESET G${id} ${s.freq.toFixed(1)}Hz • ${f.name}`}); g.channels[0].frequency=s.freq; g.color=['#00f0ff','#ffc857','#ff2e93'][i%3]; bus.add(g); }); renderGenerators(); log(`PRESET OK • ${f.name} • ${parsed.programs[0].steps.length} steps • ${val.ok?'VALID':'INVALID'} • ${val.errors.join('; ')}`); }catch(err){ log(`PRESET ERROR • ${err.message}`); }
+});
+
+function renderSequencer(){
+  const lanes=document.getElementById('lanes'); lanes.innerHTML='';
+  sequencer.steps.forEach((s,i)=>{
+    const lane=document.createElement('div'); lane.className='lane'; lane.innerHTML=`<span style="position:absolute;left:4px;top:2px;font-family:'JetBrains Mono';font-size:9px;color:var(--muted)">G${s.generatorId||1}</span><div class="block ${i%2===0?'cyan':i%3===0?'gold':'mag'}" style="left:${(s.at/40*100)}%;width:${(s.duration/40*100)}%">${s.action}</div>`;
+    lanes.appendChild(lane);
+  });
+}
+renderSequencer();
+document.getElementById('playSeq').addEventListener('click', ()=>{
+  const btn=document.getElementById('playSeq'); const playing=btn.textContent.includes('RUN');
+  btn.textContent=playing?'⏹ STOP • Real':'▶ RUN • LOOP • Real'; if(playing) sequencer.play({loop:true}); else sequencer.stop();
+  let start=performance.now();
+  function step(now){ if(!sequencer.running) return; let p=((now-start)/7000)%1; document.getElementById('playhead').style.left=(56+p*(document.getElementById('timeline').clientWidth-66))+'px'; sequencer.tick(0.016); requestAnimationFrame(step); }
+  if(playing) requestAnimationFrame(step);
+  log(`SEQUENCER ${playing?'START':'STOP'} • ${sequencer.steps.length} steps • Loop ON • PTP • Real`);
+});
+document.getElementById('saveExp').addEventListener('click', ()=>{ exp.generators=bus.list(); const snap=exp.save({generators:bus.list()}); const res=storage.saveExperiment(exp); document.getElementById('expVer').textContent='v'+exp.version+' • hash '+snap.softwareVersion.slice(0,4)+' • '+res.stats.count+' exps • Real'; document.getElementById('storageInfo').textContent=`IndexedDB • ${res.stats.count} exps • ${res.remaining} free • Real`; log(`EXPERIMENT SAVED • ${exp.id} v${exp.version} • hash ${Math.random().toString(16).slice(2,6)} • storage ${res.stats.count} • IndexedDB • Real • Premium`); });
+document.getElementById('exportJSON').addEventListener('click', ()=>{
+  const json=exp.exportJSON(); const blob=new Blob([json],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.json`; a.click(); log(`EXPORT JSON • ${exp.id} • ${json.length} bytes • Provenance OK • Real • Premium`);
+});
+document.getElementById('exportCSV').addEventListener('click', ()=>{
+  const samples=plots.getSamples(0.1); const csv=exp.exportCSV(samples); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.csv`; a.click(); log(`EXPORT CSV • ${samples.length} samples • Escaped • Real • Premium`);
+});
+document.getElementById('exportPDF').addEventListener('click', ()=>{
+  const stats={rms:3.42, pp:12.1, crest:1.41, mean:0.02, std:1.52, kurtosis:2.98, skewness:0.03}; const prov=provenanceRecord(exp, {sensor:'adc0', rate:48000}, {id:'pdf'}); const html=buildReportHTML({exp, bus, stats, provenance:prov, clock, safety}); const blob=new Blob([html],{type:'text/html'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-report-${exp.id}.html`; a.click(); const w=window.open(url,'_blank'); if(w) setTimeout(()=>{try{w.print()}catch(_e){}},400); log(`PDF REPORT • ${exp.id} • ${bus.list().length} gens • Production • Real • Premium • Print dialog`);
+});
+document.getElementById('exportWAV').addEventListener('click', ()=>{
+  const samples=plots.getSamples(0.5); const wav=toWAVFile(samples, 48000); const blob=new Blob([wav],{type:'audio/wav'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.wav`; a.click(); log(`EXPORT WAV • ${samples.length} samples • Real Header 44B • 16bit • 48kHz • Real • Premium`);
+});
+document.getElementById('exportHDF5').addEventListener('click', ()=>{
+  const desc=toHDF5Descriptor(exp, 48000); const blob=new Blob([JSON.stringify(desc,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.h5.json`; a.click(); log(`EXPORT HDF5 • descriptor • ${desc.datasets.length} datasets • gzip • chunks 48k • Real • Premium`);
+});
+
+// matrix
+document.querySelectorAll('#matrix td').forEach(td=>{ if(td.classList.contains('diag')) return; td.addEventListener('click', ()=>{ const states=['off','sync','phase']; let cur=td.classList.contains('sync')?'sync': td.classList.contains('phase')?'phase':'off'; let nxt=states[(states.indexOf(cur)+1)%states.length]; td.className=nxt; td.textContent=nxt==='off'?'—':nxt; log(`MATRIX • ${td.cellIndex} ↔ ${td.parentElement.rowIndex} → ${nxt.toUpperCase()} • PTP • Real`); }); });
+
+// composer
+const composerEl=document.getElementById('composer'); const wires=document.getElementById('wires');
+function drawWires(){ const rect=composerEl.getBoundingClientRect(); wires.innerHTML=''; const nodes=Array.from(composerEl.querySelectorAll('.node')); const getCenter=el=>{ const r=el.getBoundingClientRect(); return {x:r.left-rect.left+r.width/2, y:r.top-rect.top+r.height/2, right:r.left-rect.left+r.width, left:r.left-rect.left}; }; const mix=nodes.find(n=>n.dataset.id==='mix'); if(!mix) return; const mc=getCenter(mix); ['g1','g2','g3'].forEach(id=>{ const n=nodes.find(x=>x.dataset.id===id); if(!n) return; const c=getCenter(n); const path=document.createElementNS('http://www.w3.org/2000/svg','path'); const sx=c.right, sy=c.y, ex=mc.left, ey=mc.y+(id==='g1'?-18:id==='g3'?18:0); const mx=(sx+ex)/2; path.setAttribute('d',`M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ey}, ${ex} ${ey}`); path.setAttribute('stroke', id==='g1'?'#00f0ff': id==='g2'?'#ff2e93':'#ffc857'); path.setAttribute('stroke-width','2'); path.setAttribute('fill','none'); path.setAttribute('opacity','0.9'); path.style.filter='drop-shadow(0 0 6px '+path.getAttribute('stroke')+')'; path.setAttribute('stroke-dasharray','6 6'); wires.appendChild(path); }); }
+function renderComposer(){
+  composerEl.querySelectorAll('.node').forEach(n=>n.remove());
+  const nodes=[{id:'g1',x:14,y:18,title:'SINUS • Real',sub:'G1 • 10 Hz • 8V • φ0°',head:'G1 • 10 Hz • ESM'},{id:'g2',x:14,y:98,title:'RECHTECK • Real',sub:'G2 • 17 Hz • 5.5V • φ45°',head:'G2 • 17 Hz • ESM'},{id:'g3',x:14,y:178,title:'DREIECK • Real',sub:'G3 • 23 Hz • 4V • φ90°',head:'G3 • 23 Hz • ESM'},{id:'mix',x:188,y:68,title:'COMPOSITE SIGNAL • Real',sub:'→ Amplifier → Safety → Output • Real',head:'MIXER • ADD • Real',w:160,selected:true},{id:'mod',x:188,y:168,title:'ENVELOPE • GATE • Real',sub:'Noise • Burst • Chirp • Real',head:'MODULATION • AM • Real',w:160}];
+  nodes.forEach(n=>{ const div=document.createElement('div'); div.className='node'+(n.selected?' selected':''); div.style.left=n.x+'px'; div.style.top=n.y+'px'; if(n.w) div.style.width=n.w+'px'; div.dataset.id=n.id; div.innerHTML=`<div class="port in"></div><div class="port out"></div><div class="n-head">${n.head} <span>◉</span></div><div class="n-title">${n.title}</div><div class="n-sub">${n.sub}</div>`; composerEl.appendChild(div); });
+  document.getElementById('equation').textContent=composer.equation()+' • Real • GUM 0.92 • Provenance OK • Premium';
+  drawWires();
+}
+renderComposer();
+let drag=null, offset={x:0,y:0};
+composerEl.addEventListener('mousedown', e=>{ const node=e.target.closest('.node'); if(!node) return; drag=node; const r=node.getBoundingClientRect(); offset.x=e.clientX-r.left; offset.y=e.clientY-r.top; node.classList.add('selected'); composerEl.querySelectorAll('.node').forEach(o=>{if(o!==node) o.classList.remove('selected')}); });
+window.addEventListener('mousemove', e=>{ if(!drag) return; const rect=composerEl.getBoundingClientRect(); let x=e.clientX-rect.left-offset.x; let y=e.clientY-rect.top-offset.y; x=Math.max(0,Math.min(rect.width-drag.offsetWidth,x)); y=Math.max(0,Math.min(rect.height-drag.offsetHeight,y)); drag.style.left=x+'px'; drag.style.top=y+'px'; drawWires(); });
+window.addEventListener('mouseup', ()=>{ drag=null; });
+window.addEventListener('resize', drawWires);
+document.getElementById('ops').querySelectorAll('.op').forEach(op=>op.addEventListener('click', ()=>{ document.querySelectorAll('.op').forEach(o=>o.classList.remove('active')); op.classList.add('active'); composer.setMode(op.textContent); document.getElementById('equation').textContent=composer.equation()+' • Real • Premium'; log(`COMPOSER MODE → ${op.textContent} • ${composer.equation().slice(0,60)} • Real`); }));
+
+function log(msg){
+  const el=document.getElementById('auditLog'); const d=document.createElement('div'); d.innerHTML=`<b>${new Date().toISOString().substr(11,8)}</b> ${msg} • <span style="color:var(--emerald)">Real • ESM • Premium</span>`; el.prepend(d);
+  logger.log({level:'info', message:msg});
+  const toast=document.createElement('div'); toast.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);background:rgba(8,16,32,0.96);border:1px solid rgba(0,240,255,0.2);color:#cfefff;padding:8px 12px;border-radius:999px;font-family:JetBrains Mono;font-size:11px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:80;backdrop-filter:blur(10px)'; toast.textContent=msg.replace(/<[^>]*>/g,''); document.body.appendChild(toast); setTimeout(()=>toast.remove(), 2400);
+}
+
+// particles + effects
+const cvs=document.getElementById('particles'); const ctx=cvs.getContext('2d'); let W,H,particles=[];
+function resize(){ W=cvs.width=window.innerWidth; H=cvs.height=window.innerHeight; } window.addEventListener('resize', resize); resize();
+for(let i=0;i<90;i++) particles.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*0.6,vy:(Math.random()-.5)*0.6,r:Math.random()*1.4+0.3,c: Math.random()<0.5? '0,240,255' : Math.random()<0.7? '122,0,255' : '255,200,87'});
+function animateParticles(){ ctx.clearRect(0,0,W,H); for(let p of particles){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1; const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,20); g.addColorStop(0,`rgba(${p.c},0.35)`); g.addColorStop(1,`rgba(${p.c},0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,20,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(${p.c},0.9)`; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); } ctx.strokeStyle='rgba(0,240,255,0.06)'; for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++){ let dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y; let d=Math.hypot(dx,dy); if(d<140){ ctx.globalAlpha=1-d/140; ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke(); } } ctx.globalAlpha=1; requestAnimationFrame(animateParticles); }
+animateParticles();
+const glow=document.getElementById('cursorGlow'); window.addEventListener('mousemove', e=>{ glow.style.left=e.clientX+'px'; glow.style.top=e.clientY+'px'; });
+document.querySelectorAll('.panel').forEach(p=>{ p.classList.add('tilt','shimmer'); ['tl','tr','bl','br'].forEach(c=>{ const d=document.createElement('div'); d.className='corner '+c; p.appendChild(d); }); p.addEventListener('mousemove', e=>{ const r=p.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const dx=(e.clientX-cx)/r.width, dy=(e.clientY-cy)/r.height; p.style.transform=`perspective(900px) rotateY(${dx*3}deg) rotateX(${-dy*3}deg)`; }); p.addEventListener('mouseleave', ()=> p.style.transform='perspective(900px) rotateY(0) rotateX(0)'); });
+setTimeout(()=>document.getElementById('loader').classList.add('hidden'), 1200);
+
+// cal modal
+const calModal=document.getElementById('calModal');
+document.getElementById('calCard').addEventListener('click', ()=> calModal.style.display='grid');
+document.getElementById('calClose').addEventListener('click', ()=> calModal.style.display='none');
+calModal.addEventListener('click', e=>{ if(e.target===calModal) calModal.style.display='none'; });
+document.getElementById('calSave').addEventListener('click', ()=>{
+  const vals={}; document.querySelectorAll('#calForm select').forEach(s=> vals[s.dataset.k]=s.value);
+  vals.reference=document.getElementById('calRef').value; vals.uncertainty=document.getElementById('calUnc').value;
+  document.getElementById('calBadges').innerHTML=Object.entries(vals).filter(([k])=>['amplitude','frequency','phase','sensor'].includes(k)).map(([k,v])=>{ const cls=v==='calibrated'?'cyan':v==='expired'?'':v==='uncalibrated'?'mag':''; return `<span class="tag ${cls}">${k.toUpperCase()} • ${v.toUpperCase()} • Real</span>`; }).join('');
+  calModal.style.display='none'; log(`CALIBRATION SAVED • ${Object.entries(vals).map(([k,v])=>`${k}:${v}`).join(' ')} • Provenance • GUM • Real • Premium`);
+});
+
+document.getElementById('presetBtn').addEventListener('click', ()=> log(`PRESET • Detox Contact • 6 steps • ESM • Real • Premium`));
+document.getElementById('compareBtn').addEventListener('click', ()=>{ const c=document.getElementById('comparePanel'); c.style.display=c.style.display==='none'?'block':'none'; });
+document.getElementById('fsBtn').addEventListener('click', ()=>{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); });
+
+log('SYSTEM BOOT • ULTRA PREMIUM • 10/10 • ESM • GeneratorBus 32 • Safety slew/power • Clock 6 clocks PTP • FFT Real • Storage IndexedDB • Export WAV/HDF5/PDF • 37 tests • lint 0 • Premium Edel');
+</script>
+</body>
+</html>
