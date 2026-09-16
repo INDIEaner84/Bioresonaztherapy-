@@ -122,7 +122,6 @@ function checkRateLimit(ip){
   if(now>entry.reset){ entry.count=0; entry.reset=now+60000; }
   entry.count++;
   rateLimitMap.set(ip,entry);
-  // cleanup old entries every 100 requests
   if(rateLimitMap.size>1000){
     for(const [k,v] of rateLimitMap){ if(now>v.reset) rateLimitMap.delete(k); }
   }
@@ -136,7 +135,6 @@ const server=http.createServer(async (req,res)=>{
     res.setHeader('Content-Type','application/json');
     return res.end(JSON.stringify({error:'rate limit exceeded', retryAfter:60}));
   }
-  // Security headers
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');
@@ -162,7 +160,6 @@ const server=http.createServer(async (req,res)=>{
       const id=parseInt(path.split('/')[3]);
       const g=bus.get(id); if(!g) return json(res,{error:'not found'},404);
       const patch=await parseBody(req);
-      // safety check before apply
       const before={...g.channels[0]};
       try{
         if(patch.frequency!==undefined || patch.amplitude!==undefined || patch.duty!==undefined || patch.offset!==undefined){
