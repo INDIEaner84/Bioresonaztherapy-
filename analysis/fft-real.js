@@ -1,8 +1,9 @@
 /**
- * Real FFT — P8 Live FFT mit echtem DFT (Cooley-Tukey iterativ)
+ * Real FFT — P8 Production — Cooley-Tukey iterative + windowing + sampleRate param
  */
-export function fftReal(samples){
+export function fftReal(samples, {sampleRate=48000}={}){
   const N=samples.length;
+  if((N & (N-1))!==0) throw new Error(`FFT size must be power of 2, got ${N}`);
   let j=0;
   const re=[...samples], im=new Array(N).fill(0);
   for(let i=1;i<N;i++){
@@ -29,13 +30,23 @@ export function fftReal(samples){
     }
   }
   const mags=re.map((r,i)=> 20*Math.log10(Math.hypot(r,im[i])/N + 1e-12));
-  const freqs=re.map((_,i)=> i*48000/N);
-  return {re,im,mags,freqs};
+  const freqs=re.map((_,i)=> i*sampleRate/N);
+  const phases=re.map((r,i)=> Math.atan2(im[i], r));
+  return {re,im,mags,freqs,phases,N,sampleRate};
 }
+
 export function applyWindow(samples, type='hann'){
   const N=samples.length;
-  const win = type==='hann'? samples.map((v,i)=> v*0.5*(1-Math.cos(2*Math.PI*i/(N-1)))) 
+  if(N<2) return [...samples];
+  const win = type==='hann'? samples.map((v,i)=> v*0.5*(1-Math.cos(2*Math.PI*i/(N-1))))
     : type==='hamming'? samples.map((v,i)=> v*(0.54-0.46*Math.cos(2*Math.PI*i/(N-1))))
+    : type==='blackman'? samples.map((v,i)=> v*(0.42-0.5*Math.cos(2*Math.PI*i/(N-1))+0.08*Math.cos(4*Math.PI*i/(N-1))))
+    : type==='flatTop'? samples.map((v,i)=> v*(1-1.93*Math.cos(2*Math.PI*i/(N-1))+1.29*Math.cos(4*Math.PI*i/(N-1))-0.388*Math.cos(6*Math.PI*i/(N-1))+0.032*Math.cos(8*Math.PI*i/(N-1))))
     : samples;
   return win;
+}
+
+export function zeroPad(samples, targetN){
+  if(samples.length>=targetN) return samples.slice(0,targetN);
+  return [...samples, ...new Array(targetN-samples.length).fill(0)];
 }

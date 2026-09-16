@@ -1,2 +1,10 @@
 build
 build.dir
+node_modules
+dist
+.env
+*.log
+.DS_Store
+coverage
+.nyc_output
+

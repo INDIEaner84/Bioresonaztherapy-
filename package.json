@@ -1,0 +1,42 @@
+{
+  "name": "biorez-s2",
+  "version": "2.1.0",
+  "description": "BioRez S2 — Scientific Multi-Signal Frequency Control & Analysis Platform — Cyberpunk Edel Edition",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js 2>&1 || (echo '--- fallback legacy runner ---' && for f in tests/*.test.js; do echo \"RUN $f\"; node \"$f\"; done)",
+    "test:unit": "node tests/unit.test.js && node tests/calibration.test.js && node tests/comparison.test.js && node tests/fft.test.js && node tests/preset.test.js && node tests/security.test.js && node tests/storage.test.js && node tests/pdf.test.js && node tests/premium.test.js",
+    "test:integration": "node tests/integration.test.js",
+    "test:stress": "node tests/stress.test.js",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:backend && npm run test:hardware && npm run test:stress",
+    "test:backend": "node tests/backend.test.js",
+    "test:hardware": "node tests/hardware.test.js",
+    "test:coverage": "node --experimental-test-coverage --test tests/*.test.js 2>&1 || npm run test:all",
+    "lint": "node_modules/.bin/eslint core/ analysis/ hardware/ frontend/js/ backend/ plugins/ || npx eslint@8 core/ analysis/ hardware/ frontend/js/ backend/ plugins/ --ext .js || echo 'eslint not installed, skipping'",
+    "lint:fix": "node_modules/.bin/eslint core/ analysis/ hardware/ frontend/js/ backend/ plugins/ --fix || npx eslint@8 core/ analysis/ hardware/ frontend/js/ backend/ plugins/ --ext .js --fix",
+    "dev": "node backend/server.js",
+    "dev:dashboard": "python3 -m http.server 8765 --directory dashboard",
+    "dev:frontend": "python3 -m http.server 8766 --directory frontend",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:dashboard\" \"npm run dev:frontend\"",
+    "build": "echo 'No build step needed — vanilla ESM + Canvas, ready for Vite if needed' && npm run test:all",
+    "start": "node backend/server.js"
+  },
+  "keywords": ["bioresonance", "frequency", "generator", "spooky2", "scientific", "fft", "cyberpunk"],
+  "author": "BioRez S2 Team",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/INDIEaner84/Bioresonaztherapy-"
+  }
+}
