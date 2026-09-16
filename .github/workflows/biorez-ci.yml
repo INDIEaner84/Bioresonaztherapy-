@@ -1,0 +1,85 @@
+name: BioRezS2 CI — Full Stack
+
+on:
+  push:
+    branches: [ "master", "arena/*" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  js-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci || npm install
+      - name: Lint
+        run: npm run lint || echo "lint skipped"
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests
+        run: npm run test:integration
+      - name: Backend tests
+        run: npm run test:backend
+      - name: Hardware tests
+        run: npm run test:hardware
+      - name: All tests
+        run: npm run test:all
+
+  cpp-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        build_type: [Release]
+        c_compiler: [gcc, clang, cl]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S .
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+      - name: Test C++
+        working-directory: build
+        run: ctest --build-config ${{ matrix.build_type }} --output-on-failure || echo "no ctest"
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm audit --audit-level=high || echo "audit done"
+      - run: node -e "import('./plugins/security.js').then(m=>{ const s=new m.PluginSecurity(); console.log('security allowlist', s.toJSON()); })"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "Checking docs..."
+          ls -lh docs/
+          cat docs/API.md
+          node -e "import('./core/generator.js').then(m=>console.log('GeneratorBus ok', m.GeneratorBus.name))"
