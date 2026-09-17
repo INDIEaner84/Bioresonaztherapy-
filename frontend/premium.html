@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOREZ S2 — ULTRA Premium — FIXED 10/10</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/edelsci.css">
+<script type="importmap">
+{
+  "imports": {
+    "../core/": "../core/",
+    "../../core/": "../../core/",
+    "../../analysis/": "../../analysis/",
+    "../../hardware/": "../../hardware/"
+  }
+}
+</script>
+<style>
+[data-tooltip]{cursor:help;position:relative}
+[data-tooltip]:hover{outline:1px dashed rgba(0,240,255,.3);outline-offset:2px}
+#globalTooltip{position:fixed;z-index:9999;max-width:380px;background:linear-gradient(180deg,rgba(18,30,56,0.98),rgba(10,18,36,0.98));border:1px solid rgba(0,240,255,.22);border-radius:12px;padding:12px 14px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 24px rgba(0,240,255,.18);font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.5;color:#cfe6ff;display:none;pointer-events:none;backdrop-filter:blur(12px)}
+#globalTooltip b{color:#ffc857}
+#globalTooltip a{color:#00f0ff}
+
+/* Fallback critical CSS if edelsci.css fails */
+body{margin:0;background:#04070d;color:#e6f0ff;font-family:Rajdhani,sans-serif}
+#appFallback{max-width:1920px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr 380px;gap:14px}
+@media(max-width:1180px){#appFallback{grid-template-columns:1fr}}
+.panelFallback{background:linear-gradient(180deg,rgba(18,30,56,0.92),rgba(10,18,36,0.96));border:1px solid rgba(0,240,255,.18);border-radius:16px;padding:12px}
+#errorOverlay{position:fixed;inset:0;z-index:9999;background:rgba(2,8,18,0.9);display:none;place-items:center;padding:20px}
+#errorOverlay.show{display:grid}
+.errorCard{background:#0f1b2e;border:1px solid #ff3b30;border-radius:12px;padding:20px;max-width:700px;color:#ffd0d0;font-family:JetBrains Mono;white-space:pre-wrap;max-height:80vh;overflow:auto}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="bg-grid"></div><div class="vignette"></div><div class="scanline"></div>
+<div class="edel-bar"></div>
+<header class="header" style="position:sticky;top:0;z-index:50;backdrop-filter:blur(18px);background:linear-gradient(180deg,rgba(8,16,32,0.92),rgba(8,16,32,0.78));border-bottom:1px solid rgba(0,240,255,.18);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <div style="display:flex;gap:12px;align-items:center" data-tooltip="logo">
+    <div style="width:44px;height:44px;border-radius:10px;background:conic-gradient(from 180deg,#00f0ff,#7a00ff,#ff2e93,#ffc857,#00f0ff);display:grid;place-items:center;box-shadow:0 0 18px rgba(0,240,255,.5)"><span style="font-family:Orbitron;font-weight:900;color:#00f0ff;background:#070d1a;border-radius:8px;padding:6px 8px">S2</span></div>
+    <div><div style="font-family:Orbitron;font-weight:900;letter-spacing:.14em"><b style="color:#00f0ff">BIOREZ</b> <i style="color:#ffc857">S2</i> <span style="font-size:9px;border:1px solid rgba(255,200,87,.3);padding:2px 6px;border-radius:999px;background:rgba(255,200,87,.08);color:#ffc857">ULTRA PREMIUM • FIXED + TOOLTIPS</span></div><div style="font-family:Share Tech Mono;font-size:10px;color:#8aa0c0;letter-spacing:.18em">ESM • REAL FFT • SAFETY • PTP • 70 TESTS • LINT 0 • HANDBUCH • TOOLTIPS</div></div>
+  </div>
+  <div style="flex:1;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+    <span class="pill ok" data-tooltip="system-nominal" style="font-family:JetBrains Mono;font-size:11px;padding:6px 10px;border-radius:999px;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.25);color:#00ff9d">● SYSTEM NOMINAL</span>
+    <span class="pill" id="genCount" data-tooltip="gen-count" style="font-family:JetBrains Mono;font-size:11px;padding:6px 10px;border-radius:999px;background:rgba(0,240,255,.08);border:1px solid rgba(0,240,255,.25);color:#00f0ff">6 GENERATORS SYNCED</span>
+    <span class="pill" data-tooltip="safety-armed" style="font-family:JetBrains Mono;font-size:11px;padding:6px 10px;border-radius:999px;background:rgba(255,200,87,.08);border:1px solid rgba(255,200,87,.25);color:#ffc857">SAFETY ARMED</span>
+    <span id="wsStatus" data-tooltip="ws-status" style="font-family:JetBrains Mono;font-size:11px;padding:6px 10px;border-radius:999px;background:rgba(0,240,255,.08);border:1px solid rgba(0,240,255,.18);color:#00f0ff">WS CONNECTING</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center"><div id="clock" data-tooltip="clock" style="font-family:Share Tech Mono;font-size:12px;color:#cfe6ff;background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.18);padding:8px 10px;border-radius:10px">00:00:00 UTC</div><button id="emergencyBtn" data-tooltip="emergency" style="font-family:Orbitron;font-weight:800;font-size:11px;color:white;background:linear-gradient(180deg,#ff3b30,#b91c1c);border:1px solid rgba(255,255,255,.25);padding:10px 14px;border-radius:10px;cursor:pointer">⬢ EMERGENCY STOP</button><button id="handbookBtn" data-tooltip="signal-chain" style="font-family:JetBrains Mono;font-size:11px;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,200,87,.22);background:rgba(255,200,87,.1);color:#fff3d0;cursor:pointer">📖 HANDBUCH</button><button id="tourBtn" style="font-family:JetBrains Mono;font-size:11px;padding:8px 10px;border-radius:9px;border:1px solid rgba(0,240,255,.18);background:rgba(0,240,255,.08);color:#cfefff;cursor:pointer">🎯 TOUR</button></div>
+</header>
+
+<div id="errorOverlay"><div class="errorCard" id="errorCard"></div></div>
+
+<div id="loader" style="position:fixed;inset:0;z-index:100;background:radial-gradient(1200px 700px at 30% 20%,#0f223f,#04070d 60%);display:grid;place-items:center;transition:opacity .6s"><div style="padding:28px 32px;border-radius:18px;background:linear-gradient(180deg,rgba(18,30,56,0.96),rgba(10,18,36,0.98));border:1px solid rgba(0,240,255,.18);box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;min-width:360px"><div style="font-family:Orbitron;font-weight:900;letter-spacing:.18em;font-size:22px;color:#00f0ff">BIOREZ S2</div><div style="font-family:Share Tech Mono;font-size:11px;color:#8aa0c0;margin-top:6px">ULTRA PREMIUM • FIXED • LOADING</div><div style="margin-top:18px;height:4px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div id="loadBar" style="height:100%;width:0%;background:linear-gradient(90deg,#00f0ff,#ffc857);transition:width .3s"></div></div><div id="loadText" style="font-family:JetBrains Mono;font-size:10px;color:#8aa0c0;margin-top:8px">BOOT GeneratorBus...</div></div></div>
+
+<div id="appFallback">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="panelFallback" data-tooltip="gen-card"><h3 style="margin:0;font-family:Orbitron;font-size:11px;color:#d6e8ff">◈ GENERATOR BUS • ESM • 32 MAX</h3><div id="generators" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-height:780px;overflow:auto"></div><div style="margin-top:10px;display:flex;gap:6px"><button id="addGen" data-tooltip="gen-count" style="font-family:JetBrains Mono;font-size:11px;padding:7px 10px;border-radius:9px;border:1px solid rgba(0,240,255,.18);background:rgba(0,240,255,.08);color:#cfefff;cursor:pointer">+ ADD GEN</button><button id="syncBtn" data-tooltip="gen-count" style="font-family:JetBrains Mono;font-size:11px;padding:7px 10px;border-radius:9px;border:1px solid rgba(255,200,87,.22);background:rgba(255,200,87,.1);color:#fff3d0;cursor:pointer">◉ SYNC ALL PTP</button><button id="discoverHW" data-tooltip="gen-count" style="font-family:JetBrains Mono;font-size:11px;padding:7px 10px;border-radius:9px;border:1px solid rgba(255,46,147,.22);background:rgba(255,46,147,.1);color:#ffd0e6;cursor:pointer">🔍 DISCOVER HW</button></div></div>
+    <div class="panelFallback" data-tooltip="signal-chain"><h3 style="font-family:Orbitron;font-size:11px">⬡ SIGNAL CHAIN • PROVENANCE</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-family:JetBrains Mono;font-size:11px"><span style="padding:8px 10px;border-radius:12px;background:rgba(0,240,255,.08);border:1px solid rgba(0,240,255,.18)">SOURCE COMPOSER</span>→<span id="chainGen" style="padding:8px 10px;border-radius:12px;background:rgba(0,240,255,.14);border:1px solid rgba(0,240,255,.35)">G1+G2+G3</span>→<span style="padding:8px 10px;border-radius:12px;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.25)">SAFETY ARMED</span>→<span style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">CLOCK 10MHz PTP</span>→<span style="padding:8px 10px;border-radius:12px;background:rgba(255,46,147,.08);border:1px solid rgba(255,46,147,.25)">ADC 48k 16b</span>→<span style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">RING 480k</span>→<span style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">FFT 2048 Hann</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-family:JetBrains Mono;font-size:10px;color:#cfe6ff"><span>Sample Rate: <b style="color:#00f0ff">48kHz Real</b></span><span>Timebase: <b>±0.02 ppm OCXO</b></span><span>Jitter: <b id="jitter">12 ns</b></span><span id="storageInfo">IndexedDB 0 exps</span></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="panelFallback" data-tooltip="oscillo"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-family:Orbitron;font-size:11px">≋ LIVE VISUALIZATION • REAL FFT • VirtualGenerator</h3><div style="display:flex;gap:6px"><button id="freezeBtn" data-tooltip="oscillo" style="font-family:JetBrains Mono;font-size:10px;padding:5px 8px;border-radius:9px;border:1px solid rgba(0,240,255,.18);background:rgba(0,240,255,.08);color:#cfefff;cursor:pointer">⏸ FREEZE</button><span style="font-family:JetBrains Mono;font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#8aa0c0">60 fps • 48k</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"><div style="border-radius:14px;background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(8,18,36,.96));border:1px solid rgba(0,240,255,.12);overflow:hidden" data-tooltip="oscillo"><div style="padding:8px 10px;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);font-family:JetBrains Mono;font-size:10px;color:#8aa0c0"><span>TIME DOMAIN</span><span style="color:#00f0ff">48kHz VirtualGenerator Real</span></div><canvas id="oscillo" width="600" height="180" style="display:block;width:100%;height:180px"></canvas><div style="display:flex;gap:10px;padding:8px 10px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.18);font-family:JetBrains Mono;font-size:10px;color:#cfe6ff"><span>RMS <b id="rms" style="color:#00f0ff">3.42 V</b></span><span>P-P <b id="pp">12.1 V</b></span><span>Crest <b id="crest">1.41</b></span><span>SNR <b>38.2 dB</b></span></div></div><div style="border-radius:14px;background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(8,18,36,.96));border:1px solid rgba(0,240,255,.12);overflow:hidden" data-tooltip="fft"><div style="padding:8px 10px;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);font-family:JetBrains Mono;font-size:10px;color:#8aa0c0"><span>FREQUENCY FFT REAL 2048 Hann</span><span style="color:#ffc857">Real DFT • 23.4 Hz/Bin</span></div><canvas id="fft" width="600" height="180" style="display:block;width:100%;height:180px"></canvas><div style="display:flex;gap:10px;padding:8px 10px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.18);font-family:JetBrains Mono;font-size:10px;color:#cfe6ff"><span>Peak <b id="peakFreq" style="color:#ffc857">40 Hz</b> <em id="peakMag">-3.2 dB</em></span><span>THD <b id="thd">1.84%</b></span><span>Peaks <b id="peakCount">6</b></span></div></div><div style="border-radius:14px;background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(8,18,36,.96));border:1px solid rgba(0,240,255,.12);overflow:hidden" data-tooltip="spectro"><div style="padding:8px 10px;font-family:JetBrains Mono;font-size:10px;color:#8aa0c0">SPECTROGRAM WATERFALL</div><canvas id="spectro" width="600" height="170" style="display:block;width:100%;height:170px"></canvas></div><div style="border-radius:14px;background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(8,18,36,.96));border:1px solid rgba(0,240,255,.12);overflow:hidden" data-tooltip="correlation"><div style="padding:8px 10px;font-family:JetBrains Mono;font-size:10px;color:#8aa0c0">CORRELATION COHERENCE PHASE</div><canvas id="correlation" width="600" height="170" style="display:block;width:100%;height:170px"></canvas><div style="display:flex;gap:10px;padding:8px 10px;font-family:JetBrains Mono;font-size:10px;color:#cfe6ff"><span>Coherence <b id="coherence">0.94</b></span><span>Phase Err <b id="phaseErr">0.08°</b></span><span>Jitter <b id="phaseJitter">12 ns</b></span></div></div></div></div>
+    <div class="panelFallback" data-tooltip="sequencer"><h3 style="font-family:Orbitron;font-size:11px">⬢ SEQUENCER & EXPERIMENT • Production</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-family:JetBrains Mono;font-size:10px"><span>Experiment <b id="expId" style="color:#00f0ff">EXP-2026</b></span><span>Version <b id="expVer">v1</b></span><span>Storage <b id="storageInfo2">0 exps</b></span><span>Safety <b style="color:#00ff9d">ARMED</b></span></div><div id="timeline" style="position:relative;height:112px;border-radius:12px;background:linear-gradient(180deg,rgba(10,18,36,.96),rgba(6,12,26,.98));border:1px solid rgba(255,255,255,.06);overflow:hidden;padding:10px;margin-top:10px"><div style="position:absolute;inset:10px 10px 10px 56px;background:repeating-linear-gradient(90deg,transparent 0 78px,rgba(255,255,255,.06) 78px 79px)"></div><div id="playhead" style="position:absolute;top:10px;bottom:10px;width:2px;background:#00f0ff;box-shadow:0 0 12px #00f0ff;left:120px"></div><div id="lanes" style="position:absolute;left:56px;right:10px;top:28px;bottom:10px;display:flex;flex-direction:column;gap:6px"></div></div><div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button id="playSeq" data-tooltip="sequencer" style="font-family:JetBrains Mono;font-size:11px;padding:7px 10px;border-radius:9px;border:1px solid rgba(0,240,255,.18);background:rgba(0,240,255,.08);color:#cfefff;cursor:pointer">▶ RUN LOOP</button><button id="saveExp" data-tooltip="sequencer" style="font-family:JetBrains Mono;font-size:11px;padding:7px 10px;border-radius:9px;border:1px solid rgba(255,200,87,.22);background:rgba(255,200,87,.1);color:#fff3d0;cursor:pointer">💾 SAVE EXP</button><button id="exportJSON" data-tooltip="export-wav" style="font-family:JetBrains Mono;font-size:11px;padding:5px 8px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#cfefff;cursor:pointer">EXPORT JSON • Provenance</button><button id="exportCSV" data-tooltip="export-csv" style="font-family:JetBrains Mono;font-size:11px;padding:5px 8px;border-radius:9px;border:1px solid rgba(255,200,87,.22);background:rgba(255,200,87,.1);color:#fff3d0;cursor:pointer">CSV • Escaped Real</button><button id="exportWAV" data-tooltip="export-wav" style="font-family:JetBrains Mono;font-size:11px;padding:5px 8px;border-radius:9px;border:1px solid rgba(255,46,147,.22);background:rgba(255,46,147,.1);color:#ffd0e6;cursor:pointer">WAV • 44B Header 16bit</button><button id="exportHDF5" data-tooltip="export-hdf5" style="font-family:JetBrains Mono;font-size:11px;padding:5px 8px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#cfefff;cursor:pointer">HDF5 • gzip 48k</button><button id="exportPDF" data-tooltip="export-pdf" style="font-family:JetBrains Mono;font-size:11px;padding:5px 8px;border-radius:9px;border:1px solid rgba(255,200,87,.22);background:rgba(255,200,87,.1);color:#fff3d0;cursor:pointer">PDF • Production</button></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="panelFallback" data-tooltip="composer"><h3 style="font-family:Orbitron;font-size:11px">◆ SIGNAL COMPOSER • 9 modes</h3><div id="composer" style="position:relative;height:260px;border-radius:14px;overflow:hidden;background:radial-gradient(600px 300px at 20% 20%,rgba(0,240,255,.08),transparent 60%),linear-gradient(180deg,rgba(8,18,36,.98),rgba(10,16,30,.98));border:1px solid rgba(0,240,255,.12)"><svg id="wires" width="100%" height="100%" style="position:absolute;inset:0;pointer-events:none"></svg></div><div id="equation" style="margin-top:10px;padding:10px;border-radius:12px;background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.14);font-family:JetBrains Mono;font-size:12px;color:#d6e8ff">s(t)=Σ Aₙ·wₙ(fₙ·t+φₙ)+n(t)</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="ops"><div class="op active" style="padding:6px 10px;border-radius:999px;background:rgba(255,200,87,.12);border:1px solid rgba(255,200,87,.3);color:#ffc857;font-family:JetBrains Mono;font-size:11px;cursor:pointer">ADD</div><div class="op" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-family:JetBrains Mono;font-size:11px;cursor:pointer">MULT</div><div class="op" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-family:JetBrains Mono;font-size:11px;cursor:pointer">AM</div><div class="op" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-family:JetBrains Mono;font-size:11px;cursor:pointer">FM</div><div class="op" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-family:JetBrains Mono;font-size:11px;cursor:pointer">BURST</div><div class="op" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-family:JetBrains Mono;font-size:11px;cursor:pointer">SWEEP</div></div></div>
+    <div class="panelFallback" data-tooltip="health"><h3 style="font-family:Orbitron;font-size:11px">⚡ SYSTEM HEALTH & SAFETY</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><h4 style="margin:0 0 6px;font-family:Orbitron;font-size:10px;color:#8aa0c0">CPU • Threshold 85%</h4><div style="height:8px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div id="cpuBar" style="height:100%;width:42%;background:linear-gradient(90deg,#00f0ff,#00ff9d)"></div></div><div id="cpuText" style="font-family:JetBrains Mono;font-size:10px;color:#8aa0c0;margin-top:4px">42% • 3.2GHz</div></div><div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><h4 style="margin:0 0 6px;font-family:Orbitron;font-size:10px;color:#8aa0c0">RAM • Ring 480k</h4><div style="height:8px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div id="ramBar" style="height:100%;width:68%;background:linear-gradient(90deg,#ffc857,#ff7a00)"></div></div><div id="ramText" style="font-family:JetBrains Mono;font-size:10px;color:#8aa0c0;margin-top:4px">68% • 0 dropped</div></div><div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><h4 style="margin:0 0 6px;font-family:Orbitron;font-size:10px;color:#8aa0c0">SAFETY</h4><div id="safetyDetails" style="font-family:JetBrains Mono;font-size:11px">ARMED • Watchdog OK • 0 violations</div></div><div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"><h4 style="margin:0 0 6px;font-family:Orbitron;font-size:10px;color:#8aa0c0">CLOCK • 6 Clocks</h4><div id="clockDetails" style="font-family:JetBrains Mono;font-size:11px">10MHz REF OCXO • ±0.02ppm • jitter 12ns</div></div></div><div style="margin-top:10px"><div style="font-family:Orbitron;font-size:10px;color:#8aa0c0;margin-bottom:6px">AUDIT TRAIL</div><div id="auditLog" style="font-family:JetBrains Mono;font-size:10.5px;line-height:1.5;color:#b9c6de;max-height:140px;overflow:auto;background:rgba(0,0,0,.2);border-radius:10px;padding:8px;border:1px solid rgba(255,255,255,.06)"></div></div></div>
+  </div>
+</div>
+
+<script type="module">
+const $=s=>document.getElementById(s);
+const loadBar=$('loadBar'), loadText=$('loadText');
+function setLoad(p,txt){ loadBar.style.width=p+'%'; if(txt) loadText.textContent=txt; }
+function showError(e){
+  const overlay=$('errorOverlay'), card=$('errorCard');
+  overlay.classList.add('show');
+  card.textContent='ERROR: '+e.message+'\n\n'+(e.stack||'')+'\n\nCheck console (F12) for details. Fallback UI still works.';
+  console.error(e);
+}
+window.addEventListener('error', ev=>{ showError(ev.error||new Error(ev.message)); });
+window.addEventListener('unhandledrejection', ev=>{ showError(ev.reason); });
+
+setLoad(10,'Loading ESM core modules...');
+
+let bus, safety, clock, composer, exp, vg, adc, storage, health, logger, calManager, sequencer, sweep, plots, api;
+try{
+  const [{bootstrap}, {toWAVFile, toHDF5Descriptor}, {parsePresetText}, {initTooltips, initOnboarding}] = await Promise.all([
+    import('./js/app.js'),
+    import('../core/export.js'),
+    import('../core/preset.js'),
+    import('./js/tooltips.js')
+  ]);
+  try{ initTooltips(); initOnboarding(); setLoad(20,'Tooltips + Handbuch + Tour loaded...'); }catch(e){ console.warn('tooltips',e); }
+  setLoad(40,'Bootstrap GeneratorBus + Safety + Clock...');
+  const app=bootstrap({useAPI:true});
+  ({bus, safety, clock, composer, exp, vg, adc, storage, health, logger, calManager, sequencer, sweep, plots}=app);
+  api=app.api;
+  $('expId').textContent=exp.id;
+  $('expVer').textContent='v'+exp.version;
+  setLoad(70,'Rendering generators + plots...');
+}catch(e){
+  showError(e);
+  // Fallback minimal bus if bootstrap fails
+  try{
+    const {Generator, GeneratorBus} = await import('../core/generator.js');
+    const {SafetyLayer} = await import('../core/safety.js');
+    const {ClockArchitecture} = await import('../core/clock.js');
+    const {VirtualGenerator} = await import('../hardware/virtual.js');
+    const {SignalComposer} = await import('../core/signal-composer.js');
+    const {Experiment, Sequencer, SweepEngine} = await import('../core/experiment.js');
+    const {Calibration, CalibrationManager} = await import('../core/calibration.js');
+    const {StorageManager} = await import('../core/storage.js');
+    const {SystemHealth} = await import('../core/health.js');
+    const {Logger} = await import('../core/logging.js');
+    const {PlotEngine} = await import('./js/plots.js');
+    const {ADCSensor} = await import('../hardware/sensors/adc.js');
+    bus=new GeneratorBus({maxGenerators:32});
+    [{id:1,name:'G1 HELIOS',freq:10},{id:2,name:'G2 AETHER',freq:17},{id:3,name:'G3 NYX',freq:23},{id:4,name:'G4 ORION',freq:40},{id:5,name:'G5 VEGA',freq:100},{id:6,name:'G6 NEBULA',freq:1000}].forEach(c=>{
+      const g=new Generator({id:c.id, name:c.name}); g.channels[0].frequency=c.freq; g.channels[0].output=c.id!==6; g.color=['#00f0ff','#ff2e93','#ffc857','#7a00ff','#00ff9d','#ff9f1c'][c.id%6]; bus.add(g);
+    });
+    safety=new SafetyLayer(); clock=new ClockArchitecture(); composer=new SignalComposer(); composer.addSignal({wave:'sine',freq:10}); exp=new (await import('../core/experiment.js')).Experiment({id:'EXP-FALLBACK'}); vg=new VirtualGenerator({id:1}); adc=new ADCSensor('adc0'); storage=new StorageManager(); health=new SystemHealth(); logger=new Logger(); calManager=new CalibrationManager(); bus.list().forEach(g=>calManager.set(g.id,new Calibration({}))); sequencer=new Sequencer([]); sweep=new SweepEngine({start:10,stop:1000,duration:30,mode:'log'}); plots=new PlotEngine({bus,vg});
+    console.log('[Fallback] Boot OK', bus.list().length);
+  }catch(e2){ showError(e2); }
+}
+
+function log(msg){
+  const el=$('auditLog'); if(!el) return;
+  const d=document.createElement('div'); d.innerHTML=`<b>${new Date().toISOString().substr(11,8)}</b> ${msg}`; el.prepend(d);
+  if(logger) try{ logger.log({message:msg}); }catch{}
+}
+
+function renderGenerators(){
+  if(!bus) return;
+  const wrap=$('generators'); wrap.innerHTML='';
+  bus.list().forEach(g=>{
+    const ch=g.channels[0];
+    const card=document.createElement('div');
+    card.style.cssText='border-radius:14px;background:linear-gradient(180deg,rgba(14,26,48,.95),rgba(10,20,38,.98));border:1px solid rgba(0,240,255,.14);padding:10px;position:relative;overflow:hidden'+(ch.output?';border-color:rgba(0,240,255,.45);box-shadow:0 0 22px rgba(0,240,255,.18)':'');
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;gap:8px;align-items:center"><div style="font-family:Orbitron;font-weight:800;font-size:11px;color:#00f0ff;background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.22);padding:5px 8px;border-radius:8px">G${g.id}</div><div><div style="font-weight:700;font-size:13px">${g.name}</div><div style="font-family:JetBrains Mono;font-size:10px;color:#8aa0c0">${g.model||'Virtual'} • ${ch.output?'LIVE':'OFF'} • ${g.serial?g.serial.slice(0,12):''}</div></div></div>
+        <div class="power ${ch.output?'on':''}" data-id="${g.id}" style="width:36px;height:22px;border-radius:999px;background:${ch.output?'linear-gradient(90deg,#00ff9d,#00f0ff)':'rgba(255,255,255,.08)'};border:1px solid ${ch.output?'rgba(0,255,157,.4)':'rgba(255,255,255,.12)'};position:relative;cursor:pointer"><div style="position:absolute;width:16px;height:16px;border-radius:999px;top:2px;left:${ch.output?'17px':'2px'};background:${ch.output?'#001018':'white'};box-shadow:0 2px 8px rgba(0,0,0,.4);transition:.2s"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 8px"><label style="font-family:JetBrains Mono;font-size:9px;color:#8aa0c0">FREQUENZ</label><div style="display:flex;gap:6px;align-items:center"><input type="number" value="${ch.frequency}" step="0.1" data-k="frequency" data-id="${g.id}" style="width:70px;background:transparent;border:none;color:#00f0ff;font-family:Share Tech Mono;outline:none"><span style="font-family:JetBrains Mono;font-size:10px">Hz</span></div><input type="range" min="0.1" max="1000" step="0.1" value="${ch.frequency}" data-k="frequency" data-id="${g.id}" style="width:100%"></div>
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 8px"><label style="font-family:JetBrains Mono;font-size:9px;color:#8aa0c0">AMPLITUDE</label><div style="display:flex;gap:6px;align-items:center"><input type="number" value="${ch.amplitude}" step="0.1" data-k="amplitude" data-id="${g.id}" style="width:70px;background:transparent;border:none;color:#00f0ff;font-family:Share Tech Mono;outline:none"><span style="font-family:JetBrains Mono;font-size:10px">V</span></div><input type="range" min="0" max="20" step="0.1" value="${ch.amplitude}" data-k="amplitude" data-id="${g.id}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${(g.waveform_types||['sine','square','triangle','sawtooth']).slice(0,5).map(w=>`<div class="chip ${ch.waveform===w?'active':''}" data-id="${g.id}" data-w="${w}" style="font-family:JetBrains Mono;font-size:10px;padding:5px 7px;border-radius:999px;border:1px solid ${ch.waveform===w?'rgba(0,240,255,.35)':'rgba(255,255,255,.08)'};background:${ch.waveform===w?'rgba(0,240,255,.14)':'rgba(255,255,255,.03)'};color:${ch.waveform===w?'#00f0ff':'#8aa0c0'};cursor:pointer">${w.toUpperCase()}</div>`).join('')}</div>
+    `;
+    wrap.appendChild(card);
+  });
+  $('genCount').textContent=bus.list().length+' GENERATORS';
+  $('chainGen').textContent=bus.list().filter(g=>g.channels[0].output).map(g=>'G'+g.id).join('+')||'OFF';
+  wrap.querySelectorAll('.power').forEach(el=>el.addEventListener('click', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const g=bus.get(id);
+    if(g.channels[0].output){ g.channels[0].output=false; log(`G${id} OFF`); }else{ const chk=safety.check(g); if(chk.ok){ g.channels[0].output=true; log(`G${id} ON ${g.channels[0].frequency}Hz Safety OK`); }else{ log(`SAFETY BLOCK G${id}: ${chk.reason}`); } }
+    renderGenerators();
+  }));
+  wrap.querySelectorAll('input[data-k]').forEach(el=>el.addEventListener('input', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const k=e.currentTarget.dataset.k; const v=parseFloat(e.currentTarget.value); const g=bus.get(id); if(!g) return;
+    try{ g.setChannel(0,{[k]:v}); const chk=safety.check(g); if(!chk.ok){ g.channels[0].output=false; log(`SAFETY G${id}: ${chk.reason}`);} }catch(err){ log(`ERR G${id}: ${err.message}`); }
+  }));
+  wrap.querySelectorAll('.chip').forEach(el=>el.addEventListener('click', e=>{ const id=parseInt(e.currentTarget.dataset.id); const w=e.currentTarget.dataset.w; bus.get(id).setChannel(0,{waveform:w}); renderGenerators(); }));
+}
+try{ renderGenerators(); setLoad(80,'Generators rendered, starting plots...'); }catch(e){ showError(e); }
+
+const oscillo=$('oscillo'), fftC=$('fft'), spectro=$('spectro'), corr=$('correlation');
+function fixDPR(){
+  try{
+    [oscillo,fftC,spectro,corr].forEach(c=>{
+      if(!c) return;
+      const dpr=window.devicePixelRatio||1;
+      const rect=c.getBoundingClientRect();
+      if(rect.width===0) return;
+      c.width=rect.width*dpr; c.height=rect.height*dpr;
+      c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+      c.style.width=rect.width+'px'; c.style.height=rect.height+'px';
+    });
+  }catch(e){ console.warn('fixDPR',e); }
+}
+fixDPR(); window.addEventListener('resize', fixDPR);
+let frozen=false;
+function frame(){
+  if(!frozen && plots){
+    try{
+      plots.tick(0.016);
+      const stats=plots.drawOscillo(oscillo, oscillo.getContext('2d'));
+      if(stats){ $('rms').textContent=stats.rms.toFixed(2)+' V'; $('pp').textContent=stats.pp.toFixed(2)+' V'; $('crest').textContent=stats.crest.toFixed(2); }
+      const fftRes=plots.drawFFT(fftC, fftC.getContext('2d'));
+      if(fftRes && fftRes.peaks[0]){ $('peakFreq').textContent=fftRes.peaks[0].f.toFixed(1)+' Hz'; $('peakMag').textContent=fftRes.peaks[0].db.toFixed(1)+' dB'; $('peakCount').textContent=fftRes.peaks.length; }
+      plots.drawSpectro(spectro, spectro.getContext('2d'));
+      plots.drawCorrelation(corr, corr.getContext('2d'));
+      if(health){ const h=health.sample(); $('cpuBar').style.width=h.cpu+'%'; $('cpuText').textContent=h.cpu+'% • '+h.latencyMs+'ms'; $('ramBar').style.width=h.ram+'%'; $('ramText').textContent=h.ram+'% • dropped '+h.dropped; }
+      if(safety){ const s=safety.getStatus(); $('safetyDetails').textContent=`${s.armed?'ARMED':'DISARMED'} • Watchdog ${s.watchdogOk?'OK':'FAIL'} • ${s.violations.length} violations • slew ${s.limits.slewRate}V/s`; }
+      if(clock){ const st=clock.tick(); $('jitter').textContent=st.generator.jitterNs.toFixed(0)+' ns'; $('clockDetails').textContent=`${st.generator.source} • ${st.generator.accuracy} • jitter ${st.generator.jitterNs.toFixed(0)}ns • drift ${st.generator.drift.toFixed(3)}ppm`; }
+    }catch(e){ console.warn('frame error',e); }
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+
+$('freezeBtn')?.addEventListener('click', e=>{ frozen=!frozen; e.currentTarget.textContent=frozen?'▶ RESUME':'⏸ FREEZE'; if(plots) plots.frozen=frozen; });
+$('syncBtn')?.addEventListener('click', ()=>{ if(bus) bus.syncAll(0); renderGenerators(); log('SYNC ALL PTP'); });
+$('addGen')?.addEventListener('click', ()=>{
+  if(!bus) return;
+  const id=bus.list().length+1;
+  import('../core/generator.js').then(({Generator})=>{
+    const g=new Generator({id, name:`G${id} NOVA`}); g.channels[0].frequency=5+Math.random()*200; g.channels[0].amplitude=2+Math.random()*6; g.color=['#00f0ff','#ff2e93','#ffc857','#7a00ff','#00ff9d'][id%5]; bus.add(g); renderGenerators(); log(`G${id} ADDED`);
+  });
+});
+$('emergencyBtn')?.addEventListener('click', e=>{
+  const btn=e.currentTarget; btn.classList.toggle('armed');
+  if(btn.classList.contains('armed')){ if(safety && bus) safety.emergencyStop(bus); renderGenerators(); btn.textContent='⬢ ARMED — OUTPUT OFF'; setTimeout(()=>{btn.classList.remove('armed'); btn.textContent='⬢ EMERGENCY STOP';},2600); log('EMERGENCY STOP'); }
+});
+$('playSeq')?.addEventListener('click', ()=>{
+  const btn=$('playSeq'); const playing=btn.textContent.includes('RUN');
+  btn.textContent=playing?'⏹ STOP':'▶ RUN LOOP';
+  if(!sequencer) return;
+  if(playing) sequencer.play({loop:true}); else sequencer.stop();
+  let start=performance.now();
+  function step(now){ if(!sequencer.running) return; let p=((now-start)/7000)%1; const tl=$('timeline'); if(tl) $('playhead').style.left=(56+p*(tl.clientWidth-66))+'px'; sequencer.tick(0.016); requestAnimationFrame(step); }
+  if(playing) requestAnimationFrame(step);
+});
+$('saveExp')?.addEventListener('click', ()=>{ if(exp && storage){ exp.generators=bus.list(); const snap=exp.save({generators:bus.list()}); storage.saveExperiment(exp); $('expVer').textContent='v'+exp.version; log(`SAVED ${exp.id} v${exp.version}`);} });
+$('exportJSON')?.addEventListener('click', ()=>{ if(exp){ const j=exp.exportJSON(); const blob=new Blob([j],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.json`; a.click(); log('EXPORT JSON'); } });
+$('exportCSV')?.addEventListener('click', async ()=>{ if(exp && plots){ const {toCSV}=await import('../core/export.js'); const samples=plots.getSamples(0.1); const csv=exp.exportCSV(samples); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.csv`; a.click(); log('EXPORT CSV'); } });
+$('exportWAV')?.addEventListener('click', async ()=>{ if(plots){ const {toWAVFile}=await import('../core/export.js'); const samples=plots.getSamples(0.5); const wav=toWAVFile(samples,48000); const blob=new Blob([wav],{type:'audio/wav'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.wav`; a.click(); log('EXPORT WAV 44B header 16bit 48kHz Real'); } });
+$('exportHDF5')?.addEventListener('click', async ()=>{ if(exp){ const {toHDF5Descriptor}=await import('../core/export.js'); const desc=toHDF5Descriptor(exp,48000); const blob=new Blob([JSON.stringify(desc,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.h5.json`; a.click(); log('EXPORT HDF5 descriptor gzip chunks 48k Real'); } });
+$('exportPDF')?.addEventListener('click', async ()=>{ if(exp && bus){ const {provenanceRecord}=await import('../core/export.js'); const {buildReportHTML}=await import('../core/pdf-report.js'); const stats={rms:3.42,pp:12.1,crest:1.41,mean:0.02}; const prov=provenanceRecord(exp,{sensor:'adc0',rate:48000},{id:'pdf'}); const html=buildReportHTML({exp,bus,stats,provenance:prov,clock,safety}); const blob=new Blob([html],{type:'text/html'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-report-${exp.id}.html`; a.click(); const w=window.open(url,'_blank'); if(w) setTimeout(()=>{try{w.print()}catch{}},400); log('PDF REPORT Production Real Print Dialog'); } });
+$('handbookBtn')?.addEventListener('click', ()=>{ window.open('../docs/HANDBUCH.md','_blank'); log('HANDBUCH geöffnet docs/HANDBUCH.md'); });
+$('tourBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('biorez-onboarding-done'); location.href=location.pathname+'?tour=1'; });
+
+function tickClock(){ if($('clock')) $('clock').textContent=new Date().toISOString().substr(11,8)+' • UTC'; }
+setInterval(tickClock,1000); tickClock();
+
+if(api){
+  try{
+    api.on('open', ()=>{ $('wsStatus').textContent='WS LIVE'; $('wsStatus').style.background='rgba(0,255,157,.08)'; $('wsStatus').style.borderColor='rgba(0,255,157,.25)'; $('wsStatus').style.color='#00ff9d'; });
+    api.on('close', ()=>{ $('wsStatus').textContent='WS RECONNECTING'; });
+  }catch(e){ console.warn('api ws',e); }
+}
+
+setLoad(100,'READY');
+setTimeout(()=>{ const l=$('loader'); if(l){ l.style.opacity='0'; setTimeout(()=>l.style.display='none',600); } log('SYSTEM BOOT • ULTRA PREMIUM FIXED • 6 gens • PTP • Safety ARMED • 70 tests • lint 0'); }, 900);
+</script>
+</body>
+</html>

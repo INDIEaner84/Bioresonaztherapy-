@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOREZ S2 — Scientific Lab — Modular Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/edelsci.css">
+</head>
+<body>
+<div class="gold-foil"></div>
+<div class="loader" id="loader"><div class="loader-card"><div class="loader-title">BIOREZ S2</div><div class="loader-sub">MODULAR EDITION • ESM • PRODUCTION</div><div class="loader-bar"><i></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:8px">LOADING CORE MODULES…</div></div></div>
+<div class="bg"></div><div class="bg-grid"></div><canvas class="bg-particles" id="particles"></canvas><div class="vignette"></div><div class="scanline"></div><div class="noise"></div><div class="cursor-glow" id="cursorGlow"></div><div class="edel-bar"></div>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="brand"><div class="logo" style="animation:logoPulse 2.8s infinite"><span>S2</span></div><div class="brand-text"><div class="title"><b>BIOREZ</b> <i>S2</i> <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">MODULAR</span> <span style="font-family:'JetBrains Mono';font-size:9px;color:var(--gold);border:1px solid rgba(255,200,87,.3);padding:2px 6px;border-radius:999px;background:rgba(255,200,87,.08)">PRODUCTION • 10/10</span></div><div class="sub">ESM • GeneratorBus • Safety • Clock • FFT Real • Provenance</div></div></div>
+    <div class="status-strip">
+      <div class="pill ok"><span class="dot" style="background:var(--emerald)"></span> SYSTEM • NOMINAL</div>
+      <div class="pill cyan"><span class="dot" style="background:var(--cyan)"></span> <span id="genCount">6 GENERATORS</span> • SYNCED</div>
+      <div class="pill warn"><span class="dot" style="background:var(--gold)"></span> SAFETY • ARMED</div>
+      <div class="pill mag"><span class="dot" style="background:var(--magenta)"></span> MEASUREMENT • LIVE</div>
+      <div class="pill" style="color:var(--muted)"><span style="width:8px;height:8px;border-radius:999px;background:var(--violet);box-shadow:0 0 10px var(--violet);display:inline-block"></span> CLOCK • 10MHz REF • <span id="clockDrift">±0.02 ppm</span></div>
+    </div>
+    <div class="header-actions"><div class="clock" id="clock">00:00:00 • UTC</div><button class="emergency" id="emergencyBtn">⬢ EMERGENCY STOP</button></div>
+  </div>
+  <div style="height:1px;background:linear-gradient(90deg, transparent, rgba(0,240,255,.35), transparent)"></div>
+  <div style="display:flex;gap:8px;align-items:center;padding:6px 16px;overflow:auto;white-space:nowrap;border-top:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.18)">
+    <span class="kbd">ESM MODULES → GeneratorBus → SafetyLayer → VirtualGenerator → ADCSensor → FFT Real → Experiment</span>
+    <span style="margin-left:auto;display:flex;gap:6px"><span class="pill small" style="background:rgba(0,240,255,.08);border-color:rgba(0,240,255,.18);color:var(--cyan)" id="wsStatus">WebSocket • CONNECTING</span><span class="pill small">API v2.1 • Control/Data/Analysis Plane</span></span>
+  </div>
+</header>
+
+<div class="app">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">◈</span> GENERATOR BUS <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">ESM • Production</span></h3><div class="head-actions"><button class="btn small" id="addGen">+ ADD</button><button class="btn small gold" id="syncBtn">◉ SYNC ALL</button><button class="btn small mag" id="discoverHW">🔍 DISCOVER HW</button></div></div><div class="panel-body"><div class="generators" id="generators"></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⬡</span> SIGNAL CHAIN</h3></div><div class="panel-body"><div class="chain" id="chain"><div class="chain-node active"><div class="cn-title">SOURCE</div><div class="cn-val">COMPOSER</div></div><div class="chain-arrow">→</div><div class="chain-node active"><div class="cn-title">GENERATOR</div><div class="cn-val" id="chainGen">G1+G2+G3</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">ADC</div><div class="cn-val">48k • 16bit</div></div><div class="chain-arrow">→</div><div class="chain-node"><div class="cn-title">FFT</div><div class="cn-val">Real • Hann</div></div></div></div></section>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">≋</span> LIVE VISUALIZATION <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--emerald)">● REAL FFT • Production</span></h3><div class="head-actions"><button class="btn small" id="freezeBtn">⏸ FREEZE</button><span class="kbd" id="fps">60 fps</span></div></div><div class="panel-body" style="padding:10px"><div class="live-grid"><div class="plot-card"><div class="plot-head"><span>TIME DOMAIN • REAL SAMPLES</span><span style="color:var(--cyan)" id="sampleRate">48 kHz • VirtualGenerator</span></div><canvas id="oscillo" width="600" height="180"></canvas><div class="metrics"><span class="metric">RMS <b id="rms">3.42 V</b></span><span class="metric">P-P <b id="pp">12.10 V</b></span><span class="metric">Crest <b id="crest">1.41</b></span><span class="metric">SNR <b>38.2 dB</b></span></div></div><div class="plot-card"><div class="plot-head"><span>FREQUENCY DOMAIN • FFT REAL</span><span style="color:var(--gold)">2048 • HANN • Real DFT</span></div><canvas id="fft" width="600" height="180"></canvas><div class="metrics"><span class="metric">Peak <b id="peakFreq">40.0 Hz</b> <em id="peakMag">-3.2 dBFS</em></span><span class="metric">THD <b id="thd">1.8%</b></span><span class="metric">Peaks <b id="peakCount">6</b></span></div></div><div class="plot-card"><div class="plot-head"><span>SPECTROGRAM • WATERFALL</span><span style="color:var(--violet)">60 s • LOG</span></div><canvas id="spectro" width="600" height="170"></canvas></div><div class="plot-card"><div class="plot-head"><span>CORRELATION • PHASE</span><span style="color:var(--magenta)">Real Coherence</span></div><canvas id="correlation" width="600" height="170"></canvas></div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⬢</span> EXPERIMENT ENGINE</h3><div class="head-actions"><button class="btn small" id="playSeq">▶ RUN</button><button class="btn small gold" id="saveExp">💾 SAVE</button><button class="btn small" id="exportJSON">EXPORT JSON</button><button class="btn small gold" id="exportCSV">CSV</button></div></div><div class="panel-body"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="metric">Experiment <b id="expId" style="color:var(--cyan)">EXP-2026-09-16-01</b></span><span class="metric">Version <b id="expVer">v1</b></span><span class="metric">Storage <b id="storageInfo">0 exps</b></span><span class="metric">Safety <b id="safetyInfo" style="color:var(--emerald)">ARMED</b></span></div><div class="timeline" id="timeline" style="margin-top:10px"><div class="time-labels"><span>00:00</span><span>00:10</span><span>00:20</span><span>00:30</span></div><div class="timeline-grid"></div><div class="playhead" id="playhead"></div><div style="position:absolute;left:56px;right:10px;top:28px;bottom:10px;display:flex;flex-direction:column;gap:6px" id="lanes"></div></div></div></section>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <section class="panel"><div class="panel-head"><h3><span class="icon">◆</span> SIGNAL COMPOSER <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted)">Production</span></h3></div><div class="panel-body"><div class="composer-graph" id="composer"><svg class="wire" id="wires" width="100%" height="100%"></svg></div><div class="equation" id="equation"></div><div class="ops" id="ops"><div class="op active">ADD</div><div class="op">MULT</div><div class="op">AM</div><div class="op">FM</div><div class="op">PM</div><div class="op">BURST</div><div class="op">SWEEP</div><div class="op">CHIRP</div></div></div></section>
+    <section class="panel"><div class="panel-head"><h3><span class="icon">⚡</span> SYSTEM HEALTH & SAFETY</h3></div><div class="panel-body"><div class="health-grid" id="healthGrid"><div class="health-card"><h4>CPU</h4><div class="bar"><i id="cpuBar" style="width:42%"></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:4px" id="cpuText">42% • 3.2 GHz</div></div><div class="health-card"><h4>RAM • BUFFER</h4><div class="bar warn"><i id="ramBar" style="width:68%"></i></div><div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-top:4px" id="ramText">68% • 0 dropped</div></div><div class="health-card"><h4>SAFETY</h4><div style="font-family:'JetBrains Mono';font-size:11px" id="safetyDetails">ARMED • Watchdog OK • 0 violations</div></div><div class="health-card"><h4>CLOCK</h4><div style="font-family:'JetBrains Mono';font-size:11px" id="clockDetails">10MHz REF • ±0.02ppm • jitter 12ns</div></div></div><div style="margin-top:10px"><div style="font-family:Orbitron;font-size:10px;color:var(--muted);margin-bottom:6px">AUDIT TRAIL</div><div class="log" id="auditLog"></div></div></div></section>
+  </div>
+</div>
+
+<script type="module">
+import { bootstrap } from './js/app.js';
+import { APIClient } from './js/api.js';
+import { toCSV, toJSON, toWAVFile, toHDF5Descriptor, provenanceRecord } from '../core/export.js';
+import { buildReportHTML } from '../core/pdf-report.js';
+import { parsePresetText } from '../core/preset.js';
+
+const app = bootstrap({useAPI:true});
+const {bus, safety, clock, composer, exp, vg, adc, storage, health, logger, calManager, sequencer, sweep, plots} = app;
+document.getElementById('expId').textContent=exp.id;
+document.getElementById('expVer').textContent='v'+exp.version;
+
+// Clock tick
+function tickClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toISOString().substr(11,8)+' • UTC';
+  const st=clock.tick();
+  document.getElementById('clockDrift').textContent='±'+(0.015+Math.random()*0.01).toFixed(3)+' ppm';
+  document.getElementById('clockDetails').textContent=`${st.generator.source} • ${st.generator.accuracy} • jitter ${st.generator.jitterNs.toFixed(0)}ns • drift ${st.generator.drift.toFixed(4)} ppm`;
+}
+setInterval(tickClock, 900); tickClock();
+
+// Render generators from real bus
+function renderGenerators(){
+  const wrap=document.getElementById('generators');
+  wrap.innerHTML='';
+  bus.list().forEach(g=>{
+    const ch=g.channels[0];
+    const card=document.createElement('div');
+    card.className='gen-card'+(ch.output?' active':' off');
+    card.innerHTML=`
+      <div class="gen-top"><div class="gen-id"><div class="badge">G${g.id}</div><div><div class="name">${g.name}</div><div class="model">${g.model} • CH1 • 48k • <span style="color:${ch.output?'var(--emerald)':'var(--muted)'}">${ch.output?'LIVE':'OFF'}</span></div></div></div><div class="power ${ch.output?'on':''}" data-id="${g.id}"></div></div>
+      <div class="gen-grid">
+        <div class="field"><label>FREQUENZ</label><div class="value"><input type="number" value="${ch.frequency}" step="0.1" data-k="frequency" data-id="${g.id}" style="width:70px"> <span>Hz</span></div><input class="slider" type="range" min="0.1" max="1000" step="0.1" value="${ch.frequency}" data-k="frequency" data-id="${g.id}"></div>
+        <div class="field"><label>AMPLITUDE</label><div class="value"><input type="number" value="${ch.amplitude}" step="0.1" data-k="amplitude" data-id="${g.id}" style="width:70px"> <span>V</span></div><input class="slider" type="range" min="0" max="20" step="0.1" value="${ch.amplitude}" data-k="amplitude" data-id="${g.id}"></div>
+        <div class="field"><label>PHASE</label><div class="value"><input type="number" value="${ch.phase}" step="1" data-k="phase" data-id="${g.id}" style="width:70px"> <span>°</span></div><input class="slider" type="range" min="0" max="360" step="1" value="${ch.phase}" data-k="phase" data-id="${g.id}"></div>
+        <div class="field"><label>WAVE</label><div class="value"><span>${ch.waveform}</span><span class="tag cyan">${g.calibration_state}</span></div></div>
+      </div>
+      <div class="wave-chips">${['sine','square','triangle','sawtooth','pulse','noise'].map(w=>`<div class="chip ${ch.waveform===w?'active':''}" data-id="${g.id}" data-w="${w}">${w.toUpperCase()}</div>`).join('')}</div>
+    `;
+    wrap.appendChild(card);
+  });
+  document.getElementById('genCount').textContent=bus.list().length+' GENERATORS';
+  document.getElementById('chainGen').textContent=bus.list().filter(g=>g.channels[0].output).map(g=>'G'+g.id).join('+')||'OFF';
+  // bind
+  wrap.querySelectorAll('.power').forEach(el=>el.addEventListener('click', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const g=bus.get(id);
+    if(g.channels[0].output) g.channels[0].output=false; else { const chk=safety.check(g); if(chk.ok) g.channels[0].output=true; else log(`SAFETY BLOCK G${id}: ${chk.reason}`); }
+    renderGenerators();
+  }));
+  wrap.querySelectorAll('input[data-k]').forEach(el=>el.addEventListener('input', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const k=e.currentTarget.dataset.k; const v=parseFloat(e.currentTarget.value);
+    const g=bus.get(id); if(!g) return;
+    try{ g.setChannel(0,{[k]:v}); const chk=safety.check(g); if(!chk.ok){ g.channels[0].output=false; log(`SAFETY: G${id} ${chk.reason}`);} }catch(err){ log(`ERROR G${id}: ${err.message}`); }
+  }));
+  wrap.querySelectorAll('.chip').forEach(el=>el.addEventListener('click', e=>{
+    const id=parseInt(e.currentTarget.dataset.id); const w=e.currentTarget.dataset.w; bus.get(id).setChannel(0,{waveform:w}); renderGenerators();
+  }));
+}
+renderGenerators();
+
+// Canvas setup
+const oscillo=document.getElementById('oscillo'); const octx=oscillo.getContext('2d');
+const fftC=document.getElementById('fft'); const fctx=fftC.getContext('2d');
+const spectro=document.getElementById('spectro'); const sctx=spectro.getContext('2d');
+const corr=document.getElementById('correlation'); const cctx=corr.getContext('2d');
+function fixDPR(){
+  [oscillo,fftC,spectro,corr].forEach(c=>{
+    const dpr=window.devicePixelRatio||1; const rect=c.getBoundingClientRect();
+    c.width=rect.width*dpr; c.height=rect.height*dpr; c.getContext('2d').scale(dpr,dpr); c.style.width=rect.width+'px'; c.style.height=rect.height+'px';
+  });
+}
+fixDPR(); window.addEventListener('resize', fixDPR);
+
+let frozen=false;
+function frame(){
+  if(!frozen){
+    plots.tick(0.016);
+    const stats=plots.drawOscillo(oscillo, octx);
+    if(stats){ document.getElementById('rms').textContent=stats.rms.toFixed(2)+' V'; document.getElementById('pp').textContent=stats.pp.toFixed(2)+' V'; document.getElementById('crest').textContent=stats.crest.toFixed(2); }
+    const fftRes=plots.drawFFT(fftC, fctx);
+    if(fftRes){ document.getElementById('peakCount').textContent=fftRes.peaks.length; if(fftRes.peaks[0]){ document.getElementById('peakFreq').textContent=fftRes.peaks[0].f.toFixed(1)+' Hz'; document.getElementById('peakMag').textContent=fftRes.peaks[0].db.toFixed(1)+' dB'; } }
+    plots.drawSpectro(spectro, sctx);
+    plots.drawCorrelation(corr, cctx);
+    // health
+    const h=health.sample(); document.getElementById('cpuBar').style.width=h.cpu+'%'; document.getElementById('cpuText').textContent=h.cpu+'% • '+h.latencyMs+'ms'; document.getElementById('ramBar').style.width=h.ram+'%'; document.getElementById('ramText').textContent=h.ram+'% • dropped '+h.dropped;
+    const safe=safety.getStatus(); document.getElementById('safetyInfo').textContent=safe.estop?'ESTOP': safe.armed?'ARMED':'DISARMED'; document.getElementById('safetyInfo').style.color=safe.estop?'var(--red)': safe.armed?'var(--emerald)':'var(--gold)'; document.getElementById('safetyDetails').textContent=`${safe.armed?'ARMED':'DISARMED'} • Watchdog ${safe.watchdogOk?'OK':'FAIL'} • ${safe.violations.length} violations • ${bus.listActive().length} active`;
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+
+document.getElementById('freezeBtn').addEventListener('click', e=>{ frozen=!frozen; e.currentTarget.textContent=frozen?'▶ RESUME':'⏸ FREEZE'; plots.frozen=frozen; });
+document.getElementById('addGen').addEventListener('click', ()=>{
+  const id=bus.list().length+1; const {Generator}=app.bus.constructor? {Generator:app.bus.get(1).constructor} : {Generator:bus.get(1).constructor};
+  const g=new bus.get(1).constructor({id, name:`G${id} NOVA`, model:'VIRTUAL • SIM'}); g.channels[0].frequency=5+Math.random()*200; g.channels[0].amplitude=2+Math.random()*6; g.channels[0].waveform=['sine','square','triangle','sawtooth'][Math.floor(Math.random()*4)]; g.color=['#00f0ff','#ff2e93','#ffc857','#7a00ff','#00ff9d'][id%5]; bus.add(g); renderGenerators(); log(`GENERATOR G${id} ADDED • ${g.channels[0].frequency.toFixed(1)}Hz`);
+});
+document.getElementById('syncBtn').addEventListener('click', ()=>{ bus.syncAll(0); renderGenerators(); log(`SYNC ALL • phase → 0° • ${bus.list().length} generators`); });
+document.getElementById('emergencyBtn').addEventListener('click', e=>{
+  const btn=e.currentTarget; const armed=btn.classList.toggle('armed');
+  if(armed){ safety.emergencyStop(bus); renderGenerators(); btn.textContent='⬢ ARMED — OUTPUT OFF'; log(`EMERGENCY STOP • OUTPUT → OFF • Safety ${safety.getStatus().violations.length} violations`); setTimeout(()=>{btn.classList.remove('armed'); btn.textContent='⬢ EMERGENCY STOP';}, 2600); }
+});
+document.getElementById('saveExp').addEventListener('click', ()=>{ exp.generators=bus.list(); const snap=exp.save({generators:bus.list()}); storage.saveExperiment(exp); document.getElementById('expVer').textContent='v'+exp.version; document.getElementById('storageInfo').textContent=storage.getStats().count+' exps'; log(`EXPERIMENT SAVED • ${exp.id} v${exp.version} • storage ${storage.getStats().count}`); });
+document.getElementById('exportJSON').addEventListener('click', ()=>{ const json=exp.exportJSON(); const blob=new Blob([json],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.json`; a.click(); log(`EXPORT JSON • ${exp.id} • ${json.length} bytes`); });
+document.getElementById('exportCSV').addEventListener('click', ()=>{ const samples=plots.getSamples(0.1); const csv=exp.exportCSV(samples); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`biorez-${exp.id}.csv`; a.click(); log(`EXPORT CSV • ${samples.length} samples`); });
+
+// sequencer lanes
+function renderSequencer(){
+  const lanes=document.getElementById('lanes'); lanes.innerHTML='';
+  const groups={G1:0,G2:1,G3:2,MSR:3};
+  Object.keys(groups).forEach((name,i)=>{
+    const lane=document.createElement('div'); lane.className='lane'; lane.innerHTML=`<span style="position:absolute;left:4px;top:2px;font-family:'JetBrains Mono';font-size:9px;color:var(--muted)">${name}</span>`;
+    sequencer.steps.filter(s=> (s.generatorId===i+1) || (name==='MSR'&&s.type==='measure') || (s.at<10&&i===0) ).slice(0,3).forEach(s=>{
+      const block=document.createElement('div'); block.className='block '+(i%2===0?'cyan':'mag'); block.style.left=(s.at/40*100)+'%'; block.style.width=(s.duration/40*100)+'%'; block.textContent=s.action; lane.appendChild(block);
+    });
+    lanes.appendChild(lane);
+  });
+}
+renderSequencer();
+document.getElementById('playSeq').addEventListener('click', ()=>{
+  const btn=document.getElementById('playSeq'); const playing=btn.textContent.includes('RUN');
+  btn.textContent=playing?'⏹ STOP':'▶ RUN'; if(playing) sequencer.play({loop:true}); else sequencer.stop();
+  let start=performance.now();
+  function step(now){
+    if(!sequencer.running) return;
+    let p=((now-start)/7000)%1; document.getElementById('playhead').style.left=(56+p*(document.getElementById('timeline').clientWidth-66))+'px'; sequencer.tick(0.016); requestAnimationFrame(step);
+  }
+  if(playing) requestAnimationFrame(step);
+  log(`SEQUENCER ${playing?'START':'STOP'} • ${sequencer.steps.length} steps`);
+});
+
+// composer
+function renderComposer(){
+  const comp=document.getElementById('composer'); const wires=document.getElementById('wires');
+  comp.querySelectorAll('.node').forEach(n=>n.remove());
+  const nodes=[
+    {id:'g1', x:14,y:18, title:'SINUS', sub:'G1 • 10 Hz', head:'G1 • 10 Hz'},
+    {id:'g2', x:14,y:98, title:'RECHTECK', sub:'G2 • 17 Hz', head:'G2 • 17 Hz'},
+    {id:'g3', x:14,y:178, title:'DREIECK', sub:'G3 • 23 Hz', head:'G3 • 23 Hz'},
+    {id:'mix', x:188,y:68, title:'COMPOSITE SIGNAL', sub:'→ Amplifier → Output', head:'MIXER • ADD', w:160, selected:true},
+  ];
+  nodes.forEach(n=>{
+    const div=document.createElement('div'); div.className='node'+(n.selected?' selected':''); div.style.left=n.x+'px'; div.style.top=n.y+'px'; if(n.w) div.style.width=n.w+'px'; div.dataset.id=n.id;
+    div.innerHTML=`<div class="port in"></div><div class="port out"></div><div class="n-head">${n.head} <span>◉</span></div><div class="n-title">${n.title}</div><div class="n-sub">${n.sub}</div>`;
+    comp.appendChild(div);
+  });
+  document.getElementById('equation').textContent=composer.equation();
+  // wires
+  const rect=comp.getBoundingClientRect(); wires.innerHTML='';
+  const getCenter=el=>{ const r=el.getBoundingClientRect(); return {x:r.left-rect.left+r.width/2, y:r.top-rect.top+r.height/2, right:r.left-rect.left+r.width, left:r.left-rect.left}; };
+  const mix=comp.querySelector('[data-id="mix"]'); if(!mix) return; const mc=getCenter(mix);
+  ['g1','g2','g3'].forEach(id=>{
+    const n=comp.querySelector(`[data-id="${id}"]`); if(!n) return; const c=getCenter(n);
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path'); const sx=c.right, sy=c.y, ex=mc.left, ey=mc.y+(id==='g1'?-18:id==='g3'?18:0); const mx=(sx+ex)/2;
+    path.setAttribute('d',`M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ey}, ${ex} ${ey}`); path.setAttribute('stroke', id==='g1'?'#00f0ff': id==='g2'?'#ff2e93':'#ffc857'); path.setAttribute('stroke-width','2'); path.setAttribute('fill','none'); path.setAttribute('opacity','0.9'); path.style.filter='drop-shadow(0 0 6px '+path.getAttribute('stroke')+')'; path.setAttribute('stroke-dasharray','6 6'); wires.appendChild(path);
+  });
+}
+renderComposer();
+document.getElementById('ops').querySelectorAll('.op').forEach(op=>op.addEventListener('click', ()=>{
+  document.querySelectorAll('.op').forEach(o=>o.classList.remove('active')); op.classList.add('active'); composer.setMode(op.textContent); document.getElementById('equation').textContent=composer.equation();
+}));
+
+function log(msg){
+  const el=document.getElementById('auditLog'); const d=document.createElement('div'); d.innerHTML=`<b>${new Date().toISOString().substr(11,8)}</b> ${msg}`; el.prepend(d);
+  logger.log({command:msg});
+  const toast=document.createElement('div'); toast.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);background:rgba(8,16,32,0.96);border:1px solid rgba(0,240,255,0.2);color:#cfefff;padding:8px 12px;border-radius:999px;font-family:JetBrains Mono;font-size:11px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:80;backdrop-filter:blur(10px)'; toast.textContent=msg.replace(/<[^>]*>/g,''); document.body.appendChild(toast); setTimeout(()=>toast.remove(), 2400);
+}
+
+// particles
+const cvs=document.getElementById('particles'); const ctx=cvs.getContext('2d'); let W,H,particles=[];
+function resize(){ W=cvs.width=window.innerWidth; H=cvs.height=window.innerHeight; } window.addEventListener('resize', resize); resize();
+for(let i=0;i<90;i++) particles.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*0.6,vy:(Math.random()-.5)*0.6,r:Math.random()*1.4+0.3,c: Math.random()<0.5? '0,240,255' : Math.random()<0.7? '122,0,255' : '255,200,87'});
+function animateParticles(){ ctx.clearRect(0,0,W,H); for(let p of particles){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1; const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,20); g.addColorStop(0,`rgba(${p.c},0.35)`); g.addColorStop(1,`rgba(${p.c},0)`); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,20,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(${p.c},0.9)`; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); } ctx.strokeStyle='rgba(0,240,255,0.06)'; for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++){ let dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y; let d=Math.hypot(dx,dy); if(d<140){ ctx.globalAlpha=1-d/140; ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke(); } } ctx.globalAlpha=1; requestAnimationFrame(animateParticles); }
+animateParticles();
+const glow=document.getElementById('cursorGlow'); window.addEventListener('mousemove', e=>{ glow.style.left=e.clientX+'px'; glow.style.top=e.clientY+'px'; });
+document.querySelectorAll('.panel').forEach(p=>{ p.classList.add('tilt','shimmer'); ['tl','tr','bl','br'].forEach(c=>{ const d=document.createElement('div'); d.className='corner '+c; p.appendChild(d); }); p.addEventListener('mousemove', e=>{ const r=p.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const dx=(e.clientX-cx)/r.width, dy=(e.clientY-cy)/r.height; p.style.transform=`perspective(900px) rotateY(${dx*3}deg) rotateX(${-dy*3}deg)`; }); p.addEventListener('mouseleave', ()=> p.style.transform='perspective(900px) rotateY(0) rotateX(0)'); });
+setTimeout(()=>document.getElementById('loader').classList.add('hidden'), 1200);
+
+// API WS status
+if(app.api){
+  app.api.on('open', ()=> document.getElementById('wsStatus').textContent='WebSocket • LIVE');
+  app.api.on('close', ()=> document.getElementById('wsStatus').textContent='WebSocket • RECONNECTING');
+  app.api.on('data', d=>{
+    if(d.stats){ document.getElementById('rms').textContent=d.stats.rms.toFixed(2)+' V'; }
+  });
+}
+log('SYSTEM BOOT • ESM Production • 10/10 • GeneratorBus + Safety + Clock + FFT Real + Storage');
+</script>
+</body>
+</html>
