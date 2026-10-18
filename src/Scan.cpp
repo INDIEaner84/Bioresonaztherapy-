@@ -1,63 +1,48 @@
 #include "S2.h"
+
 #include <cmath>
 #include <iostream>
 
-/*
-Overall algorithm:
-s2.config to store scanprogress once every 10s.
-scanresults.csv
-scanlog.csv
+namespace
+{
+	char ClassifyPulseChange(double delta)
+	{
+		// These legacy thresholds are display heuristics only. They are not a
+		// validated sensor-quality or physiological interpretation algorithm.
+		const double magnitude = std::abs(delta);
+		if (magnitude < 4.0)
+			return '-';
+		if (delta > 0.0 && delta < 10.0)
+			return '<';
+		if (delta < 0.0 && delta > -10.0)
+			return '>';
+		return 'X';
+	}
+}
 
-1. See whether to start a new scan from s2.config
-2. Determine step size, limits, and sensitivity.
-3. Scan forward, with automatic rescan of highlights.
-4. Do not display retrys. -<X>! only.
-5. Once a hit has been found, display the result
-
-Variables that affect this:
-
-generator
-channel
-voltage
-waveform
-
-step
-minfrequency
-maxfrequency
-validation=3
-steady
-spike
-
-*/
-
-int S2::Scan(const Options & options, ProgressMonitor & pm, StreamFactory &sf)
+int S2::Scan(const Options &options, ProgressMonitor &, StreamFactory &streamFactory)
 {
 	Devices devices(options);
 	Pulse &pulse = devices.GetPulse(options.pulse);
-	pulse.Open(devices, sf);
+	pulse.Open(devices, streamFactory);
 
+	if (IsInterrupted())
+		return 130;
+
+	// One iteration is one comparison and therefore requires two pulse readings.
 	double previousValue = pulse.BPM();
-	for (;;)
+	int comparisons = 0;
+	while (!IsInterrupted() && (options.loop || comparisons < options.iterations))
 	{
-		double currentValue = pulse.BPM();
-		double delta = currentValue - previousValue, a = std::abs(delta);
-		char result;
-		double t0 = 4.0, t1 = 10.0;
-
-		if (a < t0)
-			result = '-';
-		else if (delta > 0 && delta < t1)
-			result = '<';
-		else if (delta<0 && delta>-t1)
-			result = '>';
-		else
-			result = 'X';
-
+		const double currentValue = pulse.BPM();
+		const char result = ClassifyPulseChange(currentValue - previousValue);
 		previousValue = currentValue;
 
 		std::cout << result << std::flush;
+		++comparisons;
 	}
 
-	return 0;
-
+	if (comparisons > 0)
+		std::cout << std::endl;
+	return IsInterrupted() ? 130 : 0;
 }

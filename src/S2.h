@@ -13,16 +13,18 @@
 #include "Preset.h"
 #include "Database.h"
 #include "ProgressMonitor.h"
+#include "OutputSafety.h"
+#include "Interrupt.h"
 
 namespace S2
 {
 	class IOError : public std::runtime_error
 	{
 	public:
-		IOError(const char * message);
+		IOError(const std::string &message);
 	};
 		
-	class DeviceNotFound : IOError
+	class DeviceNotFound : public IOError
 	{
 	public:
 		DeviceNotFound();

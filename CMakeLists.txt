@@ -1,17 +1,11 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(s2)
 
-if(CMAKE_VERSION VERSION_LESS "3.1")
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-  endif()
-else()
-  set(CMAKE_CXX_STANDARD 11)
-endif()
+find_package(Threads REQUIRED)
 
-# set(CMAKE_CXX_STANDARD 11) # C++11...
-# set(CMAKE_CXX_STANDARD_REQUIRED ON) #...is required...
-# set(CMAKE_CXX_EXTENSIONS OFF) #...without compiler extensions like gnu++11
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(WIN32)
 	set(PLATFORM_CPP src/Win32.cpp)
@@ -19,7 +13,7 @@ elseif(APPLE)
 	find_library(IOKit IOKit)
 	find_library(CoreFoundation CoreFoundation)
 	set(PLATFORM_CPP src/Apple.cpp src/Posix.cpp)
-	link_libraries(${IOKit} ${CoreFoundation})
+	set(PLATFORM_LIBRARIES ${IOKit} ${CoreFoundation})
 else()
 	set(PLATFORM_CPP src/Linux.cpp src/Posix.cpp)
 endif()
@@ -34,8 +28,13 @@ add_library(s2core STATIC
 	src/FindCommand.cpp
 	src/Generator.cpp
 	src/Generator.h
+	src/Interrupt.cpp
+	src/Interrupt.h
 	src/Options.h
 	src/Options.cpp
+	src/OutputSafety.cpp
+	src/Posix.h
+	src/OutputSafety.h
 	src/Preset.cpp
 	src/Preset.h
 	src/Program.h
@@ -51,19 +50,32 @@ add_library(s2core STATIC
 	src/Waveforms.cpp
 	src/Waveforms.h
 	${PLATFORM_CPP}
-	)
+)
 
-include_directories(src)
+target_include_directories(s2core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(s2core PUBLIC Threads::Threads)
+if(PLATFORM_LIBRARIES)
+	target_link_libraries(s2core PUBLIC ${PLATFORM_LIBRARIES})
+endif()
+
+if(MSVC)
+	target_compile_options(s2core PRIVATE /W4)
+else()
+	target_compile_options(s2core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 add_executable(s2 cmdline/Main.cpp)
-target_link_libraries(s2 s2core)
+target_link_libraries(s2 PRIVATE s2core)
 
-install (TARGETS s2 DESTINATION bin)
+install(TARGETS s2 RUNTIME DESTINATION bin)
 
-add_executable(unittests 
-	tests/Tests.cpp
-	tests/Options.cpp
-	tests/Tests.h
+include(CTest)
+if(BUILD_TESTING)
+	add_executable(unittests
+		tests/Tests.cpp
+		tests/Options.cpp
+		tests/Tests.h
 	)
-
-target_link_libraries(unittests s2core)
+	target_link_libraries(unittests PRIVATE s2core)
+	add_test(NAME unit-tests COMMAND unittests)
+endif()

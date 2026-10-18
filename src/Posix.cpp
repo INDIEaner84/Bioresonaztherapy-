@@ -1,4 +1,6 @@
 #include "S2.h"
+#include "Posix.h"
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -6,20 +8,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
-
-namespace S2
-{
-	class PosixStream : public Stream
-	{
-	public:
-		PosixStream(int fd);
-		~PosixStream();
-
-		int fd;
-		int Read(char * data, int size);
-		int Write(const char * data, int size);
-	};
-}
+#include <algorithm>
+#include <cmath>
 
 S2::PosixStream::PosixStream(int fd) : fd(fd)
 {
@@ -32,21 +22,66 @@ S2::PosixStream::~PosixStream()
 
 int S2::PosixStream::Write(const char * data, int size)
 {
-	int l = write(fd, data, size);
+	if (size < 0)
+	{
+		errno = EINVAL;
+		return -1;
+	}
 
-	tcdrain(fd);
-	return l;
+	ssize_t written;
+	do
+	{
+		written = write(fd, data, static_cast<size_t>(size));
+	}
+	while (written < 0 && errno == EINTR && !S2::IsInterrupted());
+
+	if (written <= 0)
+		return static_cast<int>(written);
+
+	int drained;
+	do
+	{
+		drained = tcdrain(fd);
+	}
+	while (drained < 0 && errno == EINTR && !S2::IsInterrupted());
+
+	// A successful write followed by a drain failure is still an I/O failure:
+	// the caller must not treat the command as fully delivered.
+	if (drained < 0)
+		return -1;
+	return static_cast<int>(written);
 }
 
 int S2::PosixStream::Read(char * data, int size)
 {
-	return read(fd, data, size);
+	if (size < 0)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	ssize_t readCount;
+	do
+	{
+		readCount = read(fd, data, static_cast<size_t>(size));
+	}
+	while (readCount < 0 && errno == EINTR && !S2::IsInterrupted());
+
+	return static_cast<int>(readCount);
 }
 
 
-void S2::Sleep(double s)
+void S2::Sleep(double seconds)
 {
-	usleep(s*1000000);
+	if (!std::isfinite(seconds) || seconds <= 0.0)
+		return;
+
+	while (seconds > 0.0 && !IsInterrupted())
+	{
+		const double interval = std::min(seconds, 0.1);
+		usleep(static_cast<useconds_t>(interval * 1000000.0));
+		seconds -= interval;
+	}
 }
 
 int set_interface_attribs(int fd, int speed)
@@ -107,17 +142,16 @@ std::shared_ptr<S2::Stream> S2::DefaultStreamFactory::Open(Devices &devices, Gen
 
 	auto filename = generator.filename;
 
-	int fd = open(filename.c_str(), O_EXCL|O_RDWR|O_NOCTTY|O_SYNC);
+	const int fd = open(filename.c_str(), O_EXCL | O_RDWR | O_NOCTTY | O_SYNC);
+	if (fd == -1)
+		throw IOError(std::string("Could not open device: ") + strerror(errno));
 
-	int error = errno;
-
-	if(fd==-1)
+	if (set_interface_attribs(fd, B57600) != 0)
 	{
-		const char * error = strerror(errno);
-		throw IOError("Could not open device");
+		const int error = errno;
+		close(fd);
+		throw IOError(std::string("Could not configure generator serial settings: ") + strerror(error));
 	}
-
-	set_interface_attribs(fd, B57600);
 	// set_mincount(fd, 5);
 
 	return std::make_shared<PosixStream>(fd);
@@ -139,30 +173,32 @@ namespace Posix
 	};
 }
 
-Posix::Dir::Dir(const char * filename)
+Posix::Dir::Dir(const char * filename) : dir(opendir(filename)), current(nullptr)
 {
-	dir = opendir(filename);
 }
 
 Posix::Dir::~Dir()
 {
-	closedir(dir);
+	if (dir != nullptr)
+		closedir(dir);
 }
 
 bool Posix::Dir::Next()
 {
+	if (dir == nullptr)
+		return false;
 	current = readdir(dir);
 	return current != nullptr;
 }
 
 const char * Posix::Dir::Filename() const
 {
-	return current->d_name;
+	return current == nullptr ? "" : current->d_name;
 }
 
 bool Posix::Dir::StartsWith(const char * pattern) const
 {
-	return strncmp(Filename(),pattern,strlen(pattern))==0;
+	return current != nullptr && strncmp(current->d_name, pattern, strlen(pattern)) == 0;
 }
 
 void S2::Devices::FindDevices()

@@ -95,6 +95,7 @@ namespace S2
 		// bool Verbose(bool b); // Change verbose mode
 
 		void Send(const char * buffer);
+		void DisableOutput(int channel);
 
 		void Sync(bool on);
 		void Phase(int channel, int degrees);
