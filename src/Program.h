@@ -8,6 +8,8 @@ namespace S2
 	// The desired state
 	struct ChannelState
 	{
+		ChannelState();
+
 		ChannelId channelId;
 		double time;	// Seconds from begining
 
@@ -33,6 +35,8 @@ namespace S2
 	class Sequence
 	{
 	public:
+		virtual ~Sequence() {}
+
 		// What is the total duration of this sequence
 		virtual double Duration() const = 0;
 
@@ -78,6 +82,7 @@ namespace S2
 	{
 	public:
 		SyntaxError(const char * position);
+		SyntaxError(const char * position, const char * reason);
 	};
 
 	// Flyweight - decodes a program text
@@ -112,6 +117,10 @@ namespace S2
 	public:
 		Program(const Options & options, const std::string &name, const std::string & program);
 		Program(const Options & options, const std::string & program);
+
+		const std::string &Name() const;
+		const std::string &Text() const;
+
 	protected:
 		std::pair<const char*, const char*> GetCode() const;
 		std::string name, code;

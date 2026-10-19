@@ -1,6 +1,7 @@
 
 #include "S2.h"
 #include <algorithm>
+#include <cmath>
 
 S2::Pulse::Pulse(int id, const std::string & filename) : Device(id, filename)
 {
@@ -9,10 +10,15 @@ S2::Pulse::Pulse(int id, const std::string & filename) : Device(id, filename)
 double S2::Pulse::BPM()
 {
 	unsigned char buffer[65];
-	if (stream->Read((char*)buffer, sizeof(buffer)) == 65)
+	if (stream->Read(reinterpret_cast<char *>(buffer), sizeof(buffer)) == 65)
 	{
-		unsigned value = (buffer[3] << 16) | (buffer[4] << 8) | buffer[5];
-		return 60.0 / (double(value) / 250000.0);
+		const unsigned value = (unsigned(buffer[3]) << 16) | (unsigned(buffer[4]) << 8) | unsigned(buffer[5]);
+		if (value == 0)
+			throw IOError("Pulse sensor returned a zero interval");
+		const double bpm = 60.0 / (double(value) / 250000.0);
+		if (!std::isfinite(bpm) || bpm <= 0.0)
+			throw IOError("Pulse sensor returned an invalid interval");
+		return bpm;
 	}
 	else
 	{

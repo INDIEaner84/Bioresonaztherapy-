@@ -4,46 +4,58 @@
 #include <fstream>
 #include <cstring>
 #include <cmath>
+#include <cerrno>
+#include <cctype>
+#include <cstdlib>
+#include <limits>
 
 void S2::PrintHelp()
 {
-	std::cout << "Command line utility for Spooky2 hardware\n"
-		"Maintained by Calum Grant\n"
-		"For more information see http://www.calumgrant.net/projects/s2\n"
+	std::cout << "s2 - experimental CLI intended for Spooky2-compatible hardware\n"
 		"\n"
-		"Usage: s2 [command] [variable=value] ...\n\n"
-		"Basic commands:\n"
-		"  status  - Display devices\n"
-		"  scan    - Start or resume scan\n"
-		"  pulse   - Measure heart rate\n"
-		"  run     - Run a specified program\n"
-		"  set     - Store an option\n"
+		"Safety and scientific status: this is an experimental device-control tool. This\n"
+		"repository has not validated it for medical diagnosis, prevention, or treatment.\n"
+		"It does not establish clinical efficacy, electrical safety, calibration, or delivered\n"
+		"output. Review the project safety documentation before connecting hardware.\n"
 		"\n"
-		"Basic options:\n"
-		"  generator=id   - Optionally, specify a generator\n"
-		"  program=...    - Specify a program file\n"
-		"  spooky2=path   - Specify location of Spooky2 installation\n"
-		"  user=name      - Optionally, specify a username\n"
+		"Usage: s2 <command> [name=value ...] [@options-file]\n\n"
+		"Commands:\n"
+		"  status    List devices found by this platform's enumerator\n"
+		"  pulse     Read pulse-sensor values (one reading by default)\n"
+		"  control   Apply command-line generator settings in order\n"
+		"  run       Run a program or preset (one pass by default)\n"
+		"  scan      Experimental pulse-change display; not a validated scan\n"
+		"  set       Save or display generator selection settings\n"
+		"  find      Search the local programs.csv database\n"
+		"  validate  Validate local programs.csv fields and program syntax\n"
+		"  help      Display this help\n"
 		"\n"
-		"Advanced commands:\n"
-		"  control - execute a sequence of instructions\n"
-		"\nAdvanced options:\n"
-		"  pulse=n        - Specify pulse device (if more than one present)\n"
-		"  channel=n      - Specify a channel. 0=both, 1=channel 1, 2=channel 2\n"
-		"  verbose=on/off - Enable verbose mode"
-		"  amplitude=nV\n"
-		"  frequency=nHz\n"
-		"  duration=nnn   - \n"
-		"  waveform=xxx   - sine, square, triangle, saw, rsaw, hbomb\n"
-		"  lock=on/off    - enable/disable user control of generator\n"
-		"  output=on/off\n"
-		"  step=nHz       - Step size whilst scanning\n"
-		"\nExamples:\n"
+		"Common options:\n"
+		"  generator=N       Generator identifier (0 selects the first device)\n"
+		"  channel=N         0=both (synchronised), 1=channel 1, 2=channel 2\n"
+		"  pulse=N           Pulse-sensor identifier (0 selects the first device)\n"
+		"  simulation=on|off Use a software-only dummy device; no physical output\n"
+		"  amplitude=NV      Amplitude setpoint, 0-40 V (for example 5V or 40mV)\n"
+		"  frequency=NHz     Frequency setpoint, 0-5 MHz (for example 54kHz)\n"
+		"  duration=N[s|m|h] Delay in control scripts (for example 10s or 2m)\n"
+		"  output=on|off     Explicitly set generator output in control scripts\n"
+		"  loop=on|off       Repeat indefinitely when on; off is the default\n"
+		"  iterations=N      Number of finite runs/readings/scan comparisons (default 1)\n"
+		"  preset=PATH       Load a Spooky2 preset text file for 'run'\n"
+		"  program=ID        Load a database program for 'run'\n"
+		"  code=TEXT         Run inline program code, e.g. code=1000=1,2000=1\n"
+		"  waveform=NAME     Built-in waveform for 'control'; custom file uses 1024 samples\n"
+		"  @FILE             Read one option per line; blank lines and # comments are ignored\n"
+		"\n"
+		"Examples (simulation=on is recommended for software-only tests):\n"
 		"  s2 status\n"
-		"  s2 control generator=3 frequency=54kHz amplitude=5V output=on duration=1m output=off\n"
-		"  s2 control @commands.txt  # Read commands from text file\n"
-		"  s2 run program=\"C3 - xxx.txt\"\n"
-		"  s2 scan generator=4\n";
+		"  s2 control simulation=on generator=0 channel=1 frequency=54kHz amplitude=5V output=on duration=1m output=off\n"
+		"  s2 run simulation=on code=1000=1,2000=1 iterations=2\n"
+		"  s2 pulse simulation=on iterations=5\n"
+		"  s2 scan simulation=on iterations=10\n"
+		"\n"
+		"See README.md, docs/SCIENTIFIC_INTEGRITY.md, and docs/TASK_CATALOG.md for limitations,\n"
+		"safety notes, testing instructions, and the engineering/research roadmap.\n";
 }
 
 S2::InvalidCommandLineArgument::InvalidCommandLineArgument(const char * option) :
@@ -59,48 +71,68 @@ S2::Options::Options(int argc, const char *argv[]) : dataDir(DataDirectory())
 {
 	this->argc = argc;
 	this->argv = argv;
-	command = argv[1];
+	command = (argc > 1 && argv != nullptr && argv[1] != nullptr) ? argv[1] : "";
 	iterations = 1;
 	generator = 0;
 	pulse = 0;
 	channel = 0;
 	simulation = false;
-	verbosity=Normal;
-	loop = true;
-	iterations = 1;
-
+	verbosity = Normal;
+	loop = false;
+	ramp = 0.0;
+	duration = 0.0;
 	frequency = std::nan("");
 	amplitude = 10.0;
 
 	Visit(*this);
 }
 
-void S2::Options::Visit(OptionsVisitor&visitor) const
+void S2::Options::Visit(OptionsVisitor &visitor) const
 {
-	// Visit the command line
-	auto name = DataFile("settings.txt");
-	std::ifstream file1(name);
-	if (file1) VisitFile(file1, visitor);
+	// Apply persistent settings first; command-line options override them.
+	const std::string settingsName = DataFile("settings.txt");
+	std::ifstream settingsFile(settingsName.c_str());
+	if (settingsFile)
+		VisitFile(settingsFile, visitor);
+
+	if (argc < 2 || argv == nullptr)
+		return;
 
 	for (int i = 2; i < argc; ++i)
 	{
+		if (argv[i] == nullptr)
+			throw InvalidCommandLineArgument("<null>");
+
 		if (argv[i][0] == '@')
 		{
-			std::ifstream  file2(argv[i] + 1);
-			if (file2)
-				VisitFile(file2, visitor);
-			else
-				throw IOError("File does not exist");
+			std::ifstream optionsFile(argv[i] + 1);
+			if (!optionsFile)
+				throw IOError("Cannot open options file");
+			VisitFile(optionsFile, visitor);
 		}
-		visitor.OnOption(argv[i]);
+		else
+		{
+			visitor.OnOption(argv[i]);
+		}
 	}
 }
 
-void S2::Options::VisitFile(std::istream & file, OptionsVisitor & visitor) const
+void S2::Options::VisitFile(std::istream &file, OptionsVisitor &visitor) const
 {
 	std::string line;
 	while (std::getline(file, line))
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+
+		const std::string::size_type first = line.find_first_not_of(" \t");
+		if (first == std::string::npos || line[first] == '#')
+			continue;
+
+		const std::string::size_type last = line.find_last_not_of(" \t");
+		line = line.substr(first, last - first + 1);
 		visitor.OnOption(line.c_str());
+	}
 }
 
 void S2::Options::SaveOptions() const
@@ -116,92 +148,88 @@ void S2::Options::SaveOptions(std::ostream&file) const
 	file << "generator=" << generator << std::endl;
 }
 
-bool S2::OptionsVisitor::parseInt(const char * option, const char * variable, int min, int max, int & output)
+bool S2::OptionsVisitor::parseInt(const char *option, const char *variable, int min, int max, int &output)
 {
-	int len = strlen(variable);
-	if (strncmp(option, variable, len) == 0 && option[len]=='=')
-	{
-		char *e;
-		output = std::strtol(option + len + 1, &e, 10);
-		if (e == option + len + 1)
-			throw S2::InvalidCommandLineArgument(option);
-		if (*e != 0)
-			throw S2::InvalidUnit(option);
-		if (output<min || output>max)
-			throw ValueOutOfRange(option);
-		return true;
-	}
-	return false;
+	const size_t len = std::strlen(variable);
+	if (std::strncmp(option, variable, len) != 0 || option[len] != '=')
+		return false;
+
+	const char *value = option + len + 1;
+	char *end = nullptr;
+	errno = 0;
+	const long parsed = std::strtol(value, &end, 10);
+	if (end == value || errno == ERANGE)
+		throw InvalidCommandLineArgument(option);
+	if (*end != '\0')
+		throw InvalidUnit(option);
+	if (parsed < min || parsed > max)
+		throw ValueOutOfRange(option);
+
+	output = static_cast<int>(parsed);
+	return true;
 }
 
-bool S2::OptionsVisitor::parseSuffix(const char * option, const char * variable, const char * suffix, double min, double max, double & output)
+bool S2::OptionsVisitor::parseSuffix(const char *option, const char *variable, const char *suffix, double min, double max, double &output)
 {
-	int len = strlen(variable);
-	int suffixLen = strlen(suffix);
+	const size_t len = std::strlen(variable);
+	if (std::strncmp(option, variable, len) != 0 || option[len] != '=')
+		return false;
 
-	if(strncmp(option, variable, len)==0 && option[len]=='=')
+	const char *value = option + len + 1;
+	char *end = nullptr;
+	errno = 0;
+	output = std::strtod(value, &end);
+	if (end == value || errno == ERANGE || !std::isfinite(output))
+		throw InvalidCommandLineArgument(option);
+
+	double multiplier = 1.0;
+	switch (*end)
 	{
-		output = atof(option + len + 1);
-		char * e;
-		output = std::strtod(option + len + 1, &e);
-
-		if (e == option + len + 1)
-			throw InvalidCommandLineArgument(option);
-
-		switch (*e)
-		{
-		case 'k':
-			output *= 1000.0;
-			e++;
-			break;
-		case 'M':
-			output *= 1000000.0;
-			e++;
-			break;
-		case 'm':
-			output *= 0.001;
-			e++;
-			break;
-		case 'u':
-			output *= 0.000001;
-			e++;
-			break;
-		}
-
-		if (strcmp(e, suffix) != 0)
-			throw InvalidUnit(option);
-		
-		if (output<min || output>max)
-			throw ValueOutOfRange(option);
-		return true;
+	case 'k': multiplier = 1000.0; ++end; break;
+	case 'M': multiplier = 1000000.0; ++end; break;
+	case 'm': multiplier = 0.001; ++end; break;
+	case 'u': multiplier = 0.000001; ++end; break;
+	default: break;
 	}
-	return false;
+
+	if (std::strcmp(end, suffix) != 0)
+		throw InvalidUnit(option);
+
+	output *= multiplier;
+	if (!std::isfinite(output))
+		throw ValueOutOfRange(option);
+	if (output < min || output > max)
+		throw ValueOutOfRange(option);
+	return true;
 }
 
-bool S2::OptionsVisitor::parseDuration(const char * option, const char * variable, double & duration)
+bool S2::OptionsVisitor::parseDuration(const char *option, const char *variable, double &duration)
 {
-	int len = strlen(variable);
-	if (strncmp(option, variable, len) == 0 && option[len] == '=')
-	{
-		duration = atof(option + len + 1);
-		const char * end = option + strlen(option);
-		if (isalpha(end[-1]))
-		{
-			switch (end[-1])
-			{
-			case 's':
-				break;
-			case 'm':
-				duration *= 60.0;
-				break;
-			default:
-				throw InvalidCommandLineArgument(option);
-				;
-			}
-		}
-		return true;
-	}
-	return false;
+	const size_t len = std::strlen(variable);
+	if (std::strncmp(option, variable, len) != 0 || option[len] != '=')
+		return false;
+
+	const char *value = option + len + 1;
+	char *end = nullptr;
+	errno = 0;
+	double parsed = std::strtod(value, &end);
+	if (end == value || errno == ERANGE || !std::isfinite(parsed))
+		throw InvalidCommandLineArgument(option);
+
+	double multiplier = 1.0;
+	if (std::strcmp(end, "") == 0 || std::strcmp(end, "s") == 0)
+		multiplier = 1.0;
+	else if (std::strcmp(end, "m") == 0)
+		multiplier = 60.0;
+	else if (std::strcmp(end, "h") == 0)
+		multiplier = 3600.0;
+	else
+		throw InvalidUnit(option);
+
+	duration = parsed * multiplier;
+	if (!std::isfinite(duration) || duration < 0.0 || duration > 315360000.0)
+		throw ValueOutOfRange(option);
+	return true;
 }
 
 bool S2::OptionsVisitor::parseBool(const char * option, const char * variable, bool & output)
@@ -232,41 +260,41 @@ bool S2::OptionsVisitor::parseString(const char * option, const char * variable,
 	return false;
 }
 
-bool S2::OptionsVisitor::splitOption(const char * option, const char * variable, const char*&value, const char *&unit)
+bool S2::OptionsVisitor::splitOption(const char *option, const char *variable, const char *&value, const char *&unit)
 {
-	int len = strlen(variable);
-	if (strncmp(option, variable, len) == 0 && option[len] == '=')
-	{
-		value = option + len + 1;
-		unit = value + strlen(value);
-		while (isalpha(unit[-1])|| unit[-1]=='%')
-			--unit;
-		return true;
-	}
-	return false;
+	const size_t len = std::strlen(variable);
+	if (std::strncmp(option, variable, len) != 0 || option[len] != '=')
+		return false;
+
+	value = option + len + 1;
+	unit = value + std::strlen(value);
+	while (unit > value && (std::isalpha(static_cast<unsigned char>(unit[-1])) || unit[-1] == '%'))
+		--unit;
+	return true;
 }
 
-bool S2::OptionsVisitor::parsePercent(const char * option, const char * variable, double min, double max, double & output)
+bool S2::OptionsVisitor::parsePercent(const char *option, const char *variable, double min, double max, double &output)
 {
-	const char * value, *unit;
-	if (splitOption(option, variable, value, unit))
-	{
-		output = atof(value);
-		switch (*unit)
-		{
-		case 0:
-			break;
-		case '%':
-			output /= 100.0;
-			break;
-		default:
-			throw InvalidCommandLineArgument(option);
-		}
-		if (output<min || output>max)
-			throw ValueOutOfRange(option);
-		return true;
-	}
-	return false;
+	const char *value = nullptr;
+	const char *unit = nullptr;
+	if (!splitOption(option, variable, value, unit))
+		return false;
+
+	char *end = nullptr;
+	errno = 0;
+	output = std::strtod(value, &end);
+	if (end == value || errno == ERANGE || !std::isfinite(output))
+		throw InvalidCommandLineArgument(option);
+	if (end != unit)
+		throw InvalidUnit(option);
+	if (*unit == '%')
+		output /= 100.0;
+	else if (*unit != '\0')
+		throw InvalidUnit(option);
+
+	if (output < min || output > max)
+		throw ValueOutOfRange(option);
+	return true;
 }
 
 void S2::OptionsVisitor::Waveform(const char * str)
@@ -346,7 +374,7 @@ void S2::Options::Waveform(const WaveData&)
 {
 }
 
-void S2::Options::UnrecognisedOption(const char*option)
+void S2::Options::UnrecognisedOption(const char *option)
 {
 	throw InvalidCommandLineArgument(option);
 }
@@ -432,15 +460,15 @@ void S2::Options::Loop(bool b)
 void S2::Options::Iterations(int i)
 {
 	iterations = i;
-	loop = false;
 }
 
 void S2::OptionsVisitor::Duration(double seconds)
 {
 }
 
-void S2::OptionsVisitor::UnrecognisedOption(const char * option)
+void S2::OptionsVisitor::UnrecognisedOption(const char *option)
 {
+	throw InvalidCommandLineArgument(option);
 }
 
 void S2::OptionsVisitor::Generator(int generator)

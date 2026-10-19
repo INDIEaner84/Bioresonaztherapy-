@@ -1,5 +1,6 @@
 
 #include "S2.h"
+#include <cmath>
 
 S2::DefaultProgressMonitor::DefaultProgressMonitor(Verbosity v, std::ostream & os): verbosity(v), output(os)
 {
@@ -7,7 +8,10 @@ S2::DefaultProgressMonitor::DefaultProgressMonitor(Verbosity v, std::ostream & o
 
 void S2::DefaultProgressMonitor::TotalRunTime(double seconds)
 {
-	output << "Total run time = " << seconds << "s\n";
+	if (std::isfinite(seconds))
+		output << "Total run time = " << seconds << "s\n";
+	else
+		output << "Total run time = indefinite (loop=on)\n";
 }
 
 void S2::DefaultProgressMonitor::RunPreset(const std::string & presetName, double duration)

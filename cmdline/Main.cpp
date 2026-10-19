@@ -45,11 +45,9 @@ int S2::PulseCommand(const Options & options, ProgressMonitor &pm, StreamFactory
 		Pulse &pulse = devices.GetPulse(options.pulse);
 		pulse.Open(devices, sf);
 
-		for(int i=0; loop || i<options.iterations; ++i)
-		{
+		for (int i = 0; (loop || i < options.iterations) && !IsInterrupted(); ++i)
 			std::cout << pulse.BPM() << " bpm\n";
-		}
-		return 0;
+		return IsInterrupted() ? 130 : 0;
 	}
 	catch (const DeviceNotFound&)
 	{
@@ -78,46 +76,56 @@ int S2::Main(int argc, const char *argv[])
 	try
 	{
 		Options options(argc, argv);
-		std::string command = options.command;
-		DefaultStreamFactory sf;
-		DefaultProgressMonitor pm(options.verbosity, std::cout);
+		const std::string command = options.command;
+		DefaultStreamFactory streamFactory;
+		DefaultProgressMonitor progress(options.verbosity, std::cout);
+		InterruptScope interruptScope;
+		int result = 0;
 
-		if (command=="status")
-			return StatusCommand(options, pm, sf);
-		else if (command=="pulse")
-			return PulseCommand(options, pm, sf);
-		else if (command=="diagnose")
+		if (command == "status")
+			result = StatusCommand(options, progress, streamFactory);
+		else if (command == "pulse")
+			result = PulseCommand(options, progress, streamFactory);
+		else if (command == "diagnose")
 			Diagnose();
-		else if (command== "scan")
-			return Scan(options, pm, sf);
-		else if (command== "control")
-			return Control(options, pm, sf);
-		else if (command== "help")
+		else if (command == "scan")
+			result = Scan(options, progress, streamFactory);
+		else if (command == "control")
+			result = Control(options, progress, streamFactory);
+		else if (command == "help")
 			PrintHelp();
-		else if (command== "set")
-			Set(options);
-		else if (command=="run")
-			return Run(options, pm, sf);
-		else if(command=="find")
-			return FindCommand(options, pm);
-		else if(command=="validate")
-			return ValidateDatabase(options);
+		else if (command == "set")
+			result = Set(options);
+		else if (command == "run")
+			result = Run(options, progress, streamFactory);
+		else if (command == "find")
+			result = FindCommand(options, progress);
+		else if (command == "validate")
+			result = ValidateDatabase(options);
 		else
 			throw InvalidCommandLineArgument(options.command);
 
-		return 0;
+		return IsInterrupted() ? 130 : result;
 	}
-	catch (ValueOutOfRange & ex)
+	catch (const Interrupted &error)
 	{
-		std::cout << "The supplied argument is out of range: " << ex.option << std::endl;
+		std::cerr << error.what() << std::endl;
+		return 130;
+	}
+	catch (const ValueOutOfRange &error)
+	{
+		std::cerr << "The supplied argument is out of range: " << error.option << std::endl;
 		return 1;
 	}
-	catch (const InvalidCommandLineArgument & ex)
+	catch (const InvalidCommandLineArgument &error)
 	{
-		std::cout << "Unrecognized option: " << ex.option << std::endl;
+		std::cerr << "Invalid command or option: " << error.option << std::endl;
 		return 1;
 	}
-	std::cout << "Run \"s2 help\" to display help\n";
-	return 1;
+	catch (const std::exception &error)
+	{
+		std::cerr << "Error: " << error.what() << std::endl;
+		return IsInterrupted() ? 130 : 1;
+	}
 }
 

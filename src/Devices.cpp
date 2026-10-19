@@ -22,6 +22,8 @@ S2::Pulse & S2::Devices::GetPulse(int id)
 		return pulses.front();
 	for (auto & p : pulses)
 		if (p.id == id) return p;
+	if (pulses.size() == 1 && pulses.front().Simulation())
+		return pulses.front();
 	throw DeviceNotFound();
 }
 
@@ -32,10 +34,12 @@ S2::Generator & S2::Devices::GetGenerator(int id)
 		return generators.front();
 	for (auto & g : generators)
 		if (g.id == id) return g;
+	if (generators.size() == 1 && generators.front().Simulation())
+		return generators.front();
 	throw DeviceNotFound();
 }
 
-S2::IOError::IOError(const char * message) : std::runtime_error(message)
+S2::IOError::IOError(const std::string &message) : std::runtime_error(message)
 {
 }
 

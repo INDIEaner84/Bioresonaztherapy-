@@ -20,12 +20,15 @@ namespace S2
 	};
 }
 
-S2::Devices::Devices(const Options & options)
+S2::Devices::Devices(const Options &options)
 {
 	if (options.simulation)
 	{
-		generators.push_back(Generator(0, ""));
-		pulses.push_back(Pulse(0, ""));
+		// Simulation must be isolated from real devices and must be selected by
+		// the platform stream factory as a dummy endpoint.
+		generators.push_back(Generator(options.generator, S2::simulation));
+		pulses.push_back(Pulse(options.pulse, S2::simulation));
+		return;
 	}
 
 	// Look for them now ...
@@ -39,7 +42,7 @@ S2::Devices::Devices(const Options & options)
 
 std::shared_ptr<S2::Stream> S2::DefaultStreamFactory::Open(Devices & devices, Pulse &pulse)
 {
-	if(pulse.id==0)
+	if (pulse.Simulation())
 		return std::make_shared<DummyPulse>();
 
 	int fd = open(pulse.filename.c_str(), O_RDONLY);
@@ -66,7 +69,20 @@ S2::HidStream::~HidStream()
 
 int S2::HidStream::Read(char * buffer, int len)
 {
-	return 1 + read(fd, buffer+1, len-1);
+	if (len < 0)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	if (len == 0)
+		return 0;
+
+	// Preserve the existing one-byte prefix and payload offset. Do not turn a
+	// failed read (-1) into an apparent zero-byte result.
+	const ssize_t count = read(fd, buffer + 1, static_cast<size_t>(len - 1));
+	if (count < 0)
+		return -1;
+	return 1 + static_cast<int>(count);
 }
 
 int S2::HidStream::Write(const char * buffer, int len)

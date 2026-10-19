@@ -42,6 +42,7 @@ namespace MacOS
 
 		std::vector<HidDevice> devices;
 		IOHIDManagerRef hidMgr;
+		CFSetRef deviceSet;
 	};
 
 	class PulseData : public S2::Stream
@@ -94,13 +95,10 @@ int MacOS::PulseData::Write(const char *output, int size)
 
 S2::Devices::Devices(const Options & options)
 {
-	if(options.simulation)
+	if (options.simulation)
 	{
-		for(int i=0; i<10; ++i)
-		{
-			generators.push_back(Generator(i,simulation));
-		}
-		pulses.push_back(Pulse(0,simulation));
+		generators.push_back(Generator(options.generator, S2::simulation));
+		pulses.push_back(Pulse(options.pulse, S2::simulation));
 		return;
 	}
 
@@ -121,34 +119,66 @@ S2::Devices::Devices(const Options & options)
 
 
 
-MacOS::HidManager::HidManager()
+MacOS::HidManager::HidManager() : hidMgr(nullptr), deviceSet(nullptr)
 {
 	hidMgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+	if (hidMgr == nullptr)
+		throw S2::IOError("Could not create the HID manager");
 
 	// !! Set matching devices here:
 	IOHIDManagerSetDeviceMatching(hidMgr, nullptr);
 
-	auto success = IOHIDManagerOpen(hidMgr, kIOHIDOptionsTypeNone);
+	const IOReturn success = IOHIDManagerOpen(hidMgr, kIOHIDOptionsTypeNone);
+	if (success != kIOReturnSuccess)
+	{
+		CFRelease(hidMgr);
+		hidMgr = nullptr;
+		throw S2::IOError("Could not open the HID manager");
+	}
 
-   if(success != kIOReturnSuccess)
-	   throw S2::IOError("Could not open the HID manager");
+	deviceSet = IOHIDManagerCopyDevices(hidMgr);
+	if (deviceSet == nullptr)
+	{
+		IOHIDManagerClose(hidMgr, kIOHIDOptionsTypeNone);
+		CFRelease(hidMgr);
+		hidMgr = nullptr;
+		throw S2::IOError("Could not enumerate HID devices");
+	}
 
-   	CFSetRef deviceSet = IOHIDManagerCopyDevices(hidMgr);
+	try
+	{
+		const CFIndex count = CFSetGetCount(deviceSet);
+		std::vector<const void *> deviceIds(static_cast<std::size_t>(count));
+		if (count > 0)
+			CFSetGetValues(deviceSet, deviceIds.data());
 
-	int count = CFSetGetCount(deviceSet);
-	std::vector<IOHIDDeviceRef> deviceIds(count);
-	CFSetGetValues(deviceSet, (const void**)&deviceIds[0]);
-
-	// !! Exceptions
-	devices.reserve(count);
-	for(auto id : deviceIds)
-		devices.push_back(HidDevice(id));
+		// Keep deviceSet alive for the lifetime of these non-owning IOHID refs.
+		devices.reserve(static_cast<std::size_t>(count));
+		for (std::vector<const void *>::const_iterator id = deviceIds.begin(); id != deviceIds.end(); ++id)
+		{
+			if (*id != nullptr)
+				devices.push_back(HidDevice(reinterpret_cast<IOHIDDeviceRef>(const_cast<void *>(*id))));
+		}
+	}
+	catch (...)
+	{
+		CFRelease(deviceSet);
+		deviceSet = nullptr;
+		IOHIDManagerClose(hidMgr, kIOHIDOptionsTypeNone);
+		CFRelease(hidMgr);
+		hidMgr = nullptr;
+		throw;
+	}
 }
 
 MacOS::HidManager::~HidManager()
 {
-	IOHIDManagerClose(hidMgr, kIOHIDOptionsTypeNone);
-	CFRelease(hidMgr);
+	if (hidMgr != nullptr)
+		IOHIDManagerClose(hidMgr, kIOHIDOptionsTypeNone);
+	if (deviceSet != nullptr)
+		CFRelease(deviceSet);
+	if (hidMgr != nullptr)
+		CFRelease(hidMgr);
 }
 
 MacOS::HidDevice::HidDevice(IOHIDDeviceRef ref) : deviceRef(ref)

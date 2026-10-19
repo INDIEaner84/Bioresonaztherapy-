@@ -1,13 +1,16 @@
 #pragma once
+
+#include <iosfwd>
+#include <stdexcept>
 #include <string>
 
 namespace S2
 {
-	class InvalidCommandLineArgument : std::runtime_error
+	class InvalidCommandLineArgument : public std::runtime_error
 	{
 	public:
 		InvalidCommandLineArgument(const char * option);
-		const char * option;
+		std::string option;
 	};
 
 	class ValueOutOfRange : public InvalidCommandLineArgument
@@ -81,14 +84,9 @@ namespace S2
           int argc;
           const char **argv;
 
-          const double tissue_factor = 1.4142135623731;
-          const double bp_to_hz = 8.63808777288135E+17;
-          const double mw_to_hz = 2.25234274582033E+23;
-
           const char *command;
           enum Verbosity verbosity;
-          int iterations; // Loop a fixed number of iterations. 0 = infinite,
-                          // 1=once etc 		double stableThresh
+          int iterations; // Number of finite iterations; loop=on repeats indefinitely.
 
           // RampUp
           double ramp; // The maximum rate of change of voltage, in V/s

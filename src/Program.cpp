@@ -3,6 +3,17 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <cctype>
+#include <cerrno>
+#include <limits>
+
+S2::ChannelState::ChannelState()
+	: channelId(0, 0), time(0.0), output(false),
+	  amplitude(std::numeric_limits<double>::quiet_NaN()),
+	  frequency(std::numeric_limits<double>::quiet_NaN()),
+	  waveform(BuiltinWaveform::unknown), stepDuration(0.0)
+{
+}
 
 S2::Program::Program(const Options & options, const std::string & c) : Code(options), code(c)
 {
@@ -12,144 +23,158 @@ S2::Program::Program(const Options & options, const std::string & name, const st
 {
 }
 
-std::pair<const char*, const char*> S2::Program::GetCode() const
+const std::string &S2::Program::Name() const
 {
-	return std::make_pair(code.c_str(), code.c_str()+code.length());
+	return name;
 }
 
-void S2::Code::GetState(double time, ChannelState & state) const
+const std::string &S2::Program::Text() const
 {
-	if(time>=0.0)
+	return code;
+}
+
+std::pair<const char *, const char *> S2::Program::GetCode() const
+{
+	return std::make_pair(code.c_str(), code.c_str() + code.length());
+}
+
+void S2::Code::GetState(double time, ChannelState &state) const
+{
+	if (time >= 0.0)
 	{
 		auto code = GetCode();
-		for(auto i = code.first; i!=code.second;)
+		for (const char *position = code.first; position != code.second; )
 		{
-			ProgramStep p(options, i, code.second);
-			if(time < p.Duration())
+			ProgramStep step(options, position, code.second);
+			if (time < step.Duration())
 			{
-				p.GetState(time, state);
+				step.GetState(time, state);
 				return;
 			}
-			time -= p.Duration();
+			time -= step.Duration();
 		}
 	}
+
 	state.output = false;
+	state.amplitude = 0.0;
+	state.frequency = 0.0;
+	state.waveform = BuiltinWaveform::unknown;
+	state.stepDuration = 0.0;
 }
 
 double S2::Code::Duration() const
 {
-	double s=0.0;
-	auto code = GetCode();
-	for(const char * p=code.first; p<code.second; )
+	double seconds = 0.0;
+	const auto code = GetCode();
+	for (const char *position = code.first; position < code.second; )
 	{
-		ProgramStep step(options, p, code.second);
-		s+=step.Duration();
+		ProgramStep step(options, position, code.second);
+		seconds += step.Duration();
+		if (!std::isfinite(seconds))
+			throw SyntaxError(position);
 	}
-
-	return s;
+	return seconds;
 }
 
-const double c=299792458.0;
-
-double scaleF(double f, double limit)
+S2::ProgramStep::ProgramStep(const Options &options, const char *&position, const char *end)
+	: f1(std::nan("")), f2(std::nan("")), duration(180.0),
+	  amplitude(std::nan("")), offset(std::nan("")), fmultiplier(1.0),
+	  foffset(0.0), l(0.0), waveform(-1)
 {
-	while(f>limit)
-		f*=0.5;
-	return f;
-}
-
-S2::ProgramStep::ProgramStep(const Options & options, const char *&s, const char * end)
-{
-	amplitude = std::nan(nullptr);
-
-	duration = 180;	// !! Is this configurable ??
-	// !! Also frequency modulations etc.
-	f1=f2 = std::nan(nullptr);
-	bool dash=false;
-	char * next;
-	double n, f;
-	while(s<end)
+	bool descending = false;
+	bool finished = false;
+	while (position < end && !finished)
 	{
-		switch(*s)
+		switch (*position)
 		{
-			case '=':
-				s++;
-				duration = ReadNumber(s, end);
+		case '=':
+			++position;
+			duration = ReadNumber(position, end);
+			break;
+		case ',':
+			++position;
+			finished = true;
+			break;
+		case '-':
+			descending = true;
+			++position;
+			break;
+		case 'A':
+			++position;
+			amplitude = ReadNumber(position, end);
+			if (amplitude < 0.0 || amplitude > 40.0)
+				throw SyntaxError(position);
+			break;
+		case 'W':
+		case 'L':
+		case 'O':
+		case 'F':
+		case 'C':
+			throw SyntaxError(position, "Unsupported program field");
+		default:
+			if (std::isspace(static_cast<unsigned char>(*position)))
+			{
+				++position;
 				break;
-			case ',':
-				++s;
-				return;
-			case 0:
-				return;
-			case '-':
-				dash=true;
-				++s;
-				break;
-			case 'A':
-				amplitude = ReadNumber(s,end);
-				break;
-			case 'W':
-				++s;
-				waveform = ReadNumber(s, end);
-				break;
-			case 'L':
-				++s;
-				l = ReadNumber(s, end);
-				break;
-			case 'O':
-				++s;
-				offset = ReadFrequency(options, s, end);
-				break;
-			case 'F':
-				++s;
-				fmultiplier = ReadNumber(s,end);
-				break;
-			case 'C':
-				++s;
-				foffset = ReadNumber(s,end);
-				break;
-			case ' ':
-				++s;
-				break;
-			default:
-				(dash ? f2:f1) = ReadFrequency(options, s, end);
-				if(!dash) f2=f1;
-				break;
+			}
+			{
+				const double frequency = ReadFrequency(options, position, end);
+				if (!std::isfinite(frequency) || frequency < 0.0 || frequency > 5e6)
+					throw SyntaxError(position);
+				if (descending)
+				{
+					f2 = frequency;
+					descending = false;
+				}
+				else
+				{
+					f1 = frequency;
+					f2 = frequency;
+				}
+			}
+			break;
 		}
 	}
+
+	if (descending || !std::isfinite(duration) || duration <= 0.0 ||
+		!std::isfinite(f1) || !std::isfinite(f2))
+		throw SyntaxError(position);
 }
 
-double S2::ProgramStep::ReadNumber(const char*&s, const char *end)
+double S2::ProgramStep::ReadNumber(const char *&position, const char *end)
 {
-	char * next;
-	double n = std::strtod(s, &next);
-	if(next==s) throw SyntaxError(s);
-	s = next;
-	return n;
+	if (position >= end)
+		throw SyntaxError(position);
+
+	char *next = nullptr;
+	errno = 0;
+	const double number = std::strtod(position, &next);
+	if (next == position || errno == ERANGE || !std::isfinite(number))
+		throw SyntaxError(position);
+	position = next;
+	return number;
 }
 
-double S2::ProgramStep::ReadFrequency(const Options & options, const char *&str, const char *end)
+double S2::ProgramStep::ReadFrequency(const Options &, const char *&position, const char *end)
 {
-	switch(*str)
-	{
-	case 'M':
-		++str;
-		return ReadNumber(str,end);	// !! This is wrong
-		break;
-	case 'B':
-		++str;
-		return scaleF(options.bp_to_hz/ReadNumber(str,end), 5e6);
-		break;
-	default:
-		return ReadNumber(str,end);
-	}
+	if (position >= end)
+		throw SyntaxError(position);
+	if (*position == 'B' || *position == 'M' || *position == 'L')
+		throw SyntaxError(position, "Unsupported derived-frequency unit");
+
+	const double frequency = ReadNumber(position, end);
+	if (!std::isfinite(frequency) || frequency < 0.0 || frequency > 5e6)
+		throw SyntaxError(position);
+	return frequency;
 }
 
-void S2::ProgramStep::GetState(double time, ChannelState&output) const
+void S2::ProgramStep::GetState(double time, ChannelState &output) const
 {
 	output.output = true;
-	output.frequency = f1 + (f2-f1) * (time/duration);
-	output.stepDuration = f1==f2 ? duration : 0.0;
+	output.frequency = f1 + (f2 - f1) * (time / duration);
+	output.stepDuration = f1 == f2 ? duration : 0.0;
+	if (!std::isnan(amplitude))
+		output.amplitude = amplitude;
 }
 
 double S2::ProgramStep::Duration() const
@@ -159,15 +184,22 @@ double S2::ProgramStep::Duration() const
 
 void S2::MultiChannelSequence::Add(ChannelId channel, const std::shared_ptr<Sequence> &sequence)
 {
-	bool has0 = sequences.find(ChannelId(channel.first,0))!=sequences.end();
-	bool has1 = sequences.find(ChannelId(channel.first,1))!=sequences.end();
-	bool has2 = sequences.find(ChannelId(channel.first,2))!=sequences.end();
+	if (!sequence)
+		throw std::invalid_argument("Cannot schedule a null sequence");
+	if (channel.second < 0 || channel.second > 2)
+		throw std::invalid_argument("Invalid channel in sequence");
+	const double duration = sequence->Duration();
+	if (!std::isfinite(duration) || duration <= 0.0)
+		throw std::invalid_argument("A scheduled sequence must have a finite, positive duration");
 
-	if((channel.second==0 && (has1||has2))|| (has0 && channel.second!=0))
+	const bool has0 = sequences.find(ChannelId(channel.first, 0)) != sequences.end();
+	const bool has1 = sequences.find(ChannelId(channel.first, 1)) != sequences.end();
+	const bool has2 = sequences.find(ChannelId(channel.first, 2)) != sequences.end();
+	if ((channel.second == 0 && (has1 || has2)) || (has0 && channel.second != 0))
 		throw ChannelInUse(channel);
 
-	const auto & existing = sequences.find(channel);
-	if(existing == sequences.end())
+	const auto existing = sequences.find(channel);
+	if (existing == sequences.end())
 		sequences.insert(std::make_pair(channel, sequence));
 	else
 		existing->second = Chain(existing->second, sequence);
@@ -177,53 +209,81 @@ void S2::MultiChannelSequence::Begin()
 {
 	heap.clear();
 	heap.reserve(sequences.size());
-	for(auto & p : sequences)
+	for (const auto &entry : sequences)
 	{
 		ChannelState state;
-		state.channelId = p.first;
-		state.time = 0;
-		p.second->GetState(0, state);
+		state.channelId = entry.first;
+		state.time = 0.0;
+		entry.second->GetState(0.0, state);
 		heap.push_back(state);
 	}
 	std::make_heap(heap.begin(), heap.end());
 }
 
-bool S2::ChannelState::operator<(const ChannelState & other) const
+bool S2::ChannelState::operator<(const ChannelState &other) const
 {
 	return time > other.time || (time == other.time && channelId > other.channelId);
 }
 
-bool S2::MultiChannelSequence::Next(ChannelState & state, double stepSize, bool loop)
+bool S2::MultiChannelSequence::Next(ChannelState &state, double stepSize, bool loop)
 {
-	if(heap.empty()) return false;
+	if (!std::isfinite(stepSize) || stepSize <= 0.0)
+		throw std::invalid_argument("Sequence step size must be finite and positive");
+	if (heap.empty())
+		return false;
+
 	state = heap.front();
 	std::pop_heap(heap.begin(), heap.end());
-	ChannelState newState;
-	newState.channelId = state.channelId;
-	newState.time = state.time + (state.stepDuration==0.0 ? stepSize : state.stepDuration);
-	auto & sequence = sequences[state.channelId];
-	auto duration = sequence->Duration();
-	double timestamp = newState.time;
-	if(loop)
-	{
-		// Wrap newState.time
-		double intPart;
-		timestamp = duration * std::modf(timestamp/duration, &intPart);
-	}
 
-	if(timestamp < duration)
+	const auto sequencePosition = sequences.find(state.channelId);
+	if (sequencePosition == sequences.end())
+		throw std::logic_error("Scheduled sequence disappeared");
+	const std::shared_ptr<Sequence> &sequence = sequencePosition->second;
+	const double duration = sequence->Duration();
+	const double interval = state.stepDuration == 0.0 ? stepSize : state.stepDuration;
+	if (!std::isfinite(duration) || duration <= 0.0 || !std::isfinite(interval) || interval <= 0.0)
+		throw std::logic_error("Invalid duration while advancing sequence");
+
+	const double nextTime = state.time + interval;
+	ChannelState nextState;
+	nextState.channelId = state.channelId;
+
+	if (loop)
 	{
-		sequence->GetState(timestamp, newState);
-		heap.back() = newState;
+		double timestamp = std::fmod(nextTime, duration);
+		if (timestamp < 0.0)
+			timestamp += duration;
+		nextState.time = nextTime;
+		sequence->GetState(timestamp, nextState);
+		heap.back() = nextState;
+		std::push_heap(heap.begin(), heap.end());
+	}
+	else if (nextTime < duration)
+	{
+		nextState.time = nextTime;
+		sequence->GetState(nextTime, nextState);
+		heap.back() = nextState;
+		std::push_heap(heap.begin(), heap.end());
+	}
+	else if (state.output)
+	{
+		// Return every scheduled on-state, then emit an explicit off-state at
+		// the sequence boundary. This avoids truncating the final program step.
+		nextState = state;
+		nextState.time = duration;
+		nextState.output = false;
+		nextState.amplitude = 0.0;
+		nextState.frequency = 0.0;
+		nextState.waveform = BuiltinWaveform::unknown;
+		nextState.stepDuration = 0.0;
+		heap.back() = nextState;
 		std::push_heap(heap.begin(), heap.end());
 	}
 	else
 	{
 		heap.pop_back();
-		state.output=false;
-		state.amplitude=0;
-		state.frequency=0;
 	}
+
 	return true;
 }
 
@@ -262,36 +322,63 @@ void S2::ChainedSequence::GetState(double time, ChannelState & state) const
 class Validator : public S2::DatabaseVisitor
 {
 public:
-	Validator(const S2::Options &options) : options(options)
+	explicit Validator(const S2::Options &options) : options(options), validRecords(0), errors(0)
 	{
 	}
 
-	const S2::Options & options;
+	const S2::Options &options;
+	int validRecords;
+	int errors;
 
-	void DatabaseRow(int rowId, const std::string & line)
+	void DatabaseRow(int rowId, const std::string &line)
 	{
-		S2::DatabaseProgram p(options, line);
-
 		try
 		{
-			p.Duration();
+			S2::DatabaseProgram program(options, line);
+			const double duration = program.Duration();
+			if (!std::isfinite(duration) || duration <= 0.0)
+				throw S2::IOError("Program duration must be finite and positive");
+			++validRecords;
 		}
-		catch(...)
+		catch (const std::exception &error)
 		{
-			std::cout << "Failed to read program: " << line << ", code=" << p.code << std::endl;
+			++errors;
+			std::cerr << options.DataFile("programs.csv") << ":" << rowId << ": "
+				<< error.what() << std::endl;
 		}
 	}
 };
 
 int S2::ValidateDatabase(const Options &options)
 {
-	Database db;
+	Database database;
 	Validator validator(options);
-	db.VisitDataFiles(options, validator);
+	try
+	{
+		database.VisitDataFiles(options, validator);
+	}
+	catch (const std::exception &error)
+	{
+		std::cerr << error.what() << std::endl;
+		return 1;
+	}
+
+	if (validator.errors != 0)
+	{
+		std::cerr << "Database validation failed: " << validator.errors
+			<< " invalid record(s); " << validator.validRecords << " valid record(s)." << std::endl;
+		return 1;
+	}
+
+	std::cout << "Validated " << validator.validRecords << " program record(s)." << std::endl;
 	return 0;
 }
 
-S2::SyntaxError::SyntaxError(const char * pos) : std::runtime_error("Invalid program format")
+S2::SyntaxError::SyntaxError(const char *) : std::runtime_error("Invalid program format")
+{
+}
+
+S2::SyntaxError::SyntaxError(const char *, const char * reason) : std::runtime_error(reason)
 {
 }
 

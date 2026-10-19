@@ -3,6 +3,8 @@
 #include <iostream>
 #include <sstream>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 enum Commands
 {
@@ -85,6 +87,11 @@ void S2::Generator::Output(int channel, bool value)
 	Send(buffer);
 }
 
+void S2::Generator::DisableOutput(int channel)
+{
+	Output(channel, false);
+}
+
 void S2::Generator::Frequency(int channel, double value)
 {
 	if (value < 600.0 && frequencyScaling[channel] != FrequencyScale::Low)
@@ -141,28 +148,46 @@ void S2::Generator::Sync(bool sync)
 	Send(set_sync, 0, (int)sync);
 }
 
-void S2::Generator::Send(const char * buffer)
+void S2::Generator::Send(const char *buffer)
 {
-	// verbose = true;
-	if(verbose)
+	if (stream == nullptr)
+		throw IOError("Generator stream is not open");
+	if (verbose)
 		std::cout << buffer;
-	int len = strlen(buffer);
-	int written = stream->Write(buffer, len);
-	char returnBuffer[20];
-	int bytes; //  = Read(returnBuffer, 4);
-	do
-	{
-		Sleep(0.01);	// !! Should not be needed any more
-		bytes = stream->Read(returnBuffer, 4);
-	} while (bytes == 0);
-	returnBuffer[4] = 0;
-	if (bytes != 4 || returnBuffer[0] != 'o' || returnBuffer[1] != 'k')
-	{
-		throw IOError("Unexpected response from the generator");
-	}
-	if(verbose)
-		std::cout << returnBuffer;
 
+	const int length = static_cast<int>(std::strlen(buffer));
+	int written = 0;
+	while (written < length)
+	{
+		const int count = stream->Write(buffer + written, length - written);
+		if (count <= 0 || count > length - written)
+			throw IOError("Failed to write the complete generator command");
+		written += count;
+	}
+
+	char response[4];
+	int received = 0;
+	const std::chrono::steady_clock::time_point deadline =
+		std::chrono::steady_clock::now() + std::chrono::seconds(2);
+	while (received < static_cast<int>(sizeof(response)) &&
+		std::chrono::steady_clock::now() < deadline)
+	{
+		const int count = stream->Read(response + received, static_cast<int>(sizeof(response)) - received);
+		if (count < 0 || count > static_cast<int>(sizeof(response)) - received)
+			throw IOError("Invalid response length from the generator");
+		if (count == 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			continue;
+		}
+		received += count;
+	}
+
+	if (received != static_cast<int>(sizeof(response)) ||
+		std::memcmp(response, "ok\r\n", sizeof(response)) != 0)
+		throw IOError("Unexpected response from the generator");
+	if (verbose)
+		std::cout.write(response, sizeof(response));
 }
 
 void S2::Generator::Open(Devices & devices, StreamFactory &sf)
@@ -312,8 +337,7 @@ void S2::InvertAndSync::Output(bool b)
 	generator.Output(1, b);
 }
 
-void S2::InvertAndSync::Offset(double p)
+void S2::InvertAndSync::Offset(double)
 {
-	generator.Offset(0, p);
-	generator.Output(1, 1.0-p);
+	throw IOError("Voltage offset is not supported for the synchronized channel until its hardware mapping is verified");
 }
