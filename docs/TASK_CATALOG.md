@@ -1,6 +1,6 @@
 # Aufgaben-Katalog und Roadmap
 
-**Stand:** 18. Oktober 2026
+**Stand:** 22. November 2026
 
 **Umsetzungsrahmen:** Welle 1 verbessert Dokumentation, deterministisches Verhalten und Offline-Tests. Sie ist keine Hardware-, Sicherheits- oder klinische Validierung.
 
@@ -51,6 +51,32 @@ Die Software darf nur das behaupten, was sie nachweislich tut. Ein übermittelte
 | W2-11 | P2 | Offen | **Datenschutz und Datenherkunft.** Herkunft, Lizenz, Version und Prüfsumme jeder importierten Preset-/Programmdatenbank dokumentieren. Für Forschungsdaten Einwilligung, Minimierung, Pseudonymisierung, Zugriff, Aufbewahrung und Löschung vorab festlegen. |
 | W2-12 | P3 | Offen | **Architektur und Wartbarkeit.** Parser, Protokoll, Planung und plattformspezifische I/O entkoppeln; öffentliche APIs selbständig kompilierbar machen; statische Analyse/Sanitizer und Testabdeckung schrittweise ergänzen. Refactoring erst nach definierten Protokoll-/Verhaltens-Fixtures. |
 | W2-13 | P1 | Offen | **PowerShell-GUI auf Windows verifizieren und Abbruchpfad entwerfen.** Unter unterstütztem Windows PowerShell/.NET starten, Kommandozeilen-/Pfadquotierung und Simulationstests prüfen; einen echten kooperativen Interrupt mit Best-effort-Ausgangsabschaltung testen. Bis dahin kein GUI-Stop und laufende Prozesse blockieren das Schließen des Fensters. |
+| W2-14 | P1 | Untersuchung blockiert | **Windows-CI-Fehlerursache ermitteln.** GitHub Actions Run `39195382989` auf Basis `1bb3ab39f5cb35eb79ebe3db491596bd144dddc3`: GCC, Clang und macOS erfolgreich; Windows-MSVC-Build fehlgeschlagen, Unit-Tests dadurch übersprungen. GitHub meldet nur Exitcode 1; Rohlog-Download endete hier mit EOF, lokale Umgebung hat keinen Windows-Compiler. Ursache ist unbekannt, nicht als Altfehler klassifiziert. Nächster Schritt: vollständiges Windows-Joblog über GitHub UI/API verfügbar machen und gezielt reproduzieren; dann Root-Cause-Fix, Windows-Build und CTest. Rücknahme: nur gezielte Korrekturen am bewiesenen Fehler, keine Testlockerung. |
+
+## Welle 3 — Browser-PWA, Simulation-only
+
+| ID | Paket / Abnahmekriterium | Status |
+|---|---|---|
+| W3-01 | Responsive PWA-Shell mit Übersicht, manueller Vorschau, Programmsyntax, synthetischem Sensorbild und lokaler Ereignisliste; kein Shell-/CLI-Aufruf und keine Hardware-API. | Implementiert; GUI-Browserlauf nicht automatisiert verfügbar |
+| W3-02 | Eingaben an dokumentierte Grenzen gebunden; Programmvalidierung lehnt unbekannte Felder und ungültige Frequenz-/Zeitwerte ab; nur endliche Vorschauen. | Implementiert; Node-Tests vorhanden |
+| W3-03 | Echte Browser-Logdaten statt fest codierter Historie, defensive LocalStorage-Validierung, klare Datenfehleranzeige und keine Initial-Write-Löschung. | Implementiert; Parser-Regressionstests vorhanden |
+| W3-04 | PWA-Installationsmanifest mit PNG-Icons und Workbox-freier Service-Worker-Strategie: beim Installieren HTML-/JS-/CSS-Shell vorab cachen, Offline-Navigation testen, Fehler-Ressourcen nicht als HTML tarnen, nur app-eigene Caches löschen und dynamische/API-Pfade vom Caching ausschließen. | Implementiert; Service-Worker-Unit-Tests vorhanden |
+| W3-05 | Eigenständiges Node-CI für Lockfile-Installation, Tests und Produktionsbuild; lokale `npm ci`, `npm test`, `npm run build` müssen erfolgreich sein. | Implementiert; lokaler CI-Pfad erfolgreich, GitHub-Run nach Push ausstehend |
+| W3-06 | Echte Geräteintegration/Bridge bleibt gesperrt, bis W2-01 bis W2-03 und der hardwarekundige Review vorliegen. Keine Ausführung beliebiger Shell-Kommandos aus dem Browser. | Blockiert durch externe Hardware-/Sicherheitsnachweise |
+
+**W3-Lokalverifikation am 22. November 2026:** Unter Node.js 22.22.3/npm 10.9.8 bestanden `npm ci`, `npm test` (16/16), `npm run build` (TypeScript-Prüfung plus Vite-Produktionsbuild) und `npm audit` (0 bekannte Schwachstellen). HTTP-Smoke für Preview-HTML, Manifest, PNG-Icons, Service Worker, JS- und CSS-Entry-Assets gab jeweils Status 200. Kein grafischer Browser ist in der Agent-Umgebung installiert; Browserbedienung, tatsächliche PWA-Installation und Offlineverhalten auf konkreten Betriebssystemen bleiben unbestätigt. CMake ist hier nicht installiert; der lokale C++-Build/CTest konnte nicht erneut ausgeführt werden. GitHub-PWA-CI und erneuter Windows-MSVC-Lauf stehen nach Push aus.
+
+## Entscheidungs- und Problemübersicht
+
+Diese Tabelle ist die zentrale Problem-/Entscheidungsübersicht des Projekts; GitHub Issues sind für dieses Repository deaktiviert. Technische Beobachtungen mit Wiederaufnahmebedingungen werden hier geführt, nicht in parallelen Issue-Listen.
+
+| ID | Beobachtung / Auswirkung / Schwere | Ursache oder Hypothese | Empfehlung, Voraussetzung, Prüfung und Rücknahme / Wiederaufnahme |
+|---|---|---|---|
+| D3-01 | PWA-Bridge könnte Hardwarekommandos aus einem Browser auslösen; **kritisch**, keine solche Schnittstelle wird in diesem Arbeitsblock freigeschaltet. | Belegt: der PWA-Prototyp hat keine C++-CLI-Integration; ein Browser ist kein hinreichender lokaler Gerätesicherheits- oder Ausgabepfad. | Beibehalten als sim-only. Wiederaufnahme nur nach W2-01 bis W2-03, API-/Threat-Review, explizitem hardwarekundigem Review und Tests an Dummy-Streams; unabhängige Abschaltung bleibt erforderlich. Rücknahme durch Entfernung des isolierten Bridge-Pakets, nicht durch UI-Schalter. |
+| P2-01 | GitHub Windows-MSVC-Job für Master-Commit `1bb3ab39f5cb35eb79ebe3db491596bd144dddc3` fehlgeschlagen; C++-Software-Release-Gate rot, **hoch**. | Gesichert ist nur Exitcode 1 in `Build application and unit tests`; die Annotation enthält keine Compilerdiagnose. Joblog-Download endete im Agent mit EOF; Root Cause ist **unbekannt**. | Eintrag W2-14. GitHub Joblog vollständig abrufen, den exakten Fehler lokal/Windows reproduzieren und nur die bestätigte Ursache beheben. Bis dahin keine Aussage „Windows-CI bestanden“. Rücknahme: präziser Codefix; Wiederaufnahme, sobald Compilerlog und Windows-Runner verfügbar sind. |
+| P2-02 | Offene PR #1 `arena/01a01d7d-biorezs2` ist eine separate Scientific-Control-Plattform und ändert u. a. README; **mittel**, möglicher Dokumentationskonflikt bei späteren Integrationen. | Belegt durch GitHub PR-Metadaten; anderer Head-Branch und anderer Funktionsumfang. Kein lokales Claim-/Lease-System oder Repository-Arbeitsmanifest gefunden. | PR #1 nicht verändern oder mergen. Diese Arbeit bleibt auf dem Arena-Branch. Vor einem späteren gemeinsamen Merge `README.md` und Dokumentation neu vergleichen und fachliche Hardware-Claims gegen diesen Katalog prüfen. Wiederaufnahme bei expliziter Integrationsplanung/Review. |
+
+**Entscheidungen für Welle 3:** (1) Der Browser bleibt Simulation-only; ein HTTP-/WebSerial-/Shell-Adapter wird nicht vorgetäuscht. (2) `localStorage` enthält nur begrenzte, validierte UI-Ereignisse; beim ersten Laden wird nichts zurückgeschrieben, damit beschädigte oder ältere Daten nicht unbemerkt überschrieben werden. (3) Die Übersicht zählt echte lokal gespeicherte Ereignisse statt Demo-Messwerte. (4) Der Service Worker cached beim Installieren direkt die Vite-generierten Entry-Assets, damit der erste erfolgreiche Online-Ladevorgang bereits den Offline-App-Shell vorbereitet; dynamische/API-Pfade werden nicht abgefangen und andere Apps auf demselben Origin werden beim Update nicht gelöscht. (5) PWA-Tests laufen mit Node `node:test`, ohne Browser- oder Testframework-Abhängigkeit.
 
 ## Release-Gates
 
