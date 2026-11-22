@@ -1,6 +1,6 @@
 # s2 — Spooky2-compatible device-control prototype
 
-`s2` is a C++11 command-line application intended to communicate with Spooky2-compatible signal-generator hardware and read a pulse-sensor stream. The repository also contains a separate legacy C# Windows Forms solution; this README and the CMake CI path cover the C++ command-line application only.
+`s2` is a C++11 command-line application intended to communicate with Spooky2-compatible signal-generator hardware and read a pulse-sensor stream. The repository also contains a separate legacy C# Windows Forms solution and an experimental browser PWA prototype. The CMake CI path covers the C++ command-line application; the PWA has a separate Node-based build/test workflow.
 
 > [!WARNING]
 > **This is an experimental engineering tool, not a validated medical or clinical system.** This repository does not establish diagnostic accuracy, clinical efficacy, electrical safety, calibration, or the physical output delivered by a connected device. Do not use it to diagnose, prevent, monitor, or treat disease. Do not connect outputs to a person, a medical device, or an unapproved load on the basis of this repository. Follow the hardware manufacturer's instructions and applicable local requirements. Software attempts to turn outputs off on handled exits, but cannot guarantee a hardware-safe state after a process kill, power loss, device disconnect, or other fault. See [Scientific integrity and safety](docs/SCIENTIFIC_INTEGRITY.md).
@@ -15,6 +15,7 @@ This project sends setpoints; it does not independently measure generator output
 - `scan` is an experimental pulse-change display, **not** a biofeedback scan. It prints one symbol per comparison (one comparison by default); `iterations=N` sets a finite comparison count and `loop=on` opts into continuous output. It does not command a generator, save results, resume sessions, or produce clinically interpretable findings.
 - The repository contains unit tests using fake streams. It has no hardware-in-the-loop or clinical validation.
 - `Powershell-GUI.ps1` is an experimental Windows Forms wrapper around the C++ CLI; it is not part of the CMake build or CI. It defaults to software simulation, filters arguments by command, and asks for confirmation before physical-device access. Its `scan` button remains disabled: a finite comparison count does not bound the time spent waiting for a device read, and the wrapper has no cooperative stop control. Do not close it while a command is active. Output-off behavior remains best effort, not a hardware guarantee.
+- `web/` contains an experimental installable PWA prototype. It currently runs in **simulation-only mode** with synthetic sensor values and browser-local activity logs. It does not connect to the C++ CLI, a local bridge, or physical hardware. Its interface and mock interactions are not hardware, medical, or electrical-safety validation.
 
 See the [task catalog](docs/TASK_CATALOG.md) for what is implemented and what remains open. Claims and experiment requirements are defined in [Scientific integrity and safety](docs/SCIENTIFIC_INTEGRITY.md).
 
@@ -141,6 +142,20 @@ The `amplitude` and `frequency` values are software setpoints, not metrological 
 - Windows: `%APPDATA%\.s2\settings.txt` and `%APPDATA%\.s2\programs.csv`
 
 `settings.txt` stores the selected generator and channel. `programs.csv` is user-supplied/imported data; its provenance, license, format version, and scientific validity are not established by this project. The current CSV reader requires at least eight fields, uses the first eight and ignores additional fields; empty numeric cells are interpreted as `0` for legacy compatibility. See [`s2 validate`](#validate-the-local-program-database) for the supported syntax checks. Vendor-schema compatibility is not established.
+
+## Experimental browser GUI (PWA)
+
+The `web/` directory contains a cross-platform, installable browser interface prototype. It is intentionally simulation-only: manual commands are previews, sensor values are synthetic, and activity is stored in the current browser. No hardware bridge or connection to the C++ CLI is implemented.
+
+```sh
+cd web
+npm ci
+npm run dev
+```
+
+Open the local URL printed by Vite. To test the production PWA shell and service worker, run `npm run build` and then `npm run preview`; install support depends on the browser and secure context (localhost is treated as secure by modern browsers). The production build precaches its HTML shell, generated JS/CSS entry assets, manifest, and icons for offline shell use after it has been loaded online at least once. The activity log uses this browser's local storage and is not synchronized. Run `npm test` to exercise local validation, storage parsing, and service-worker behavior before building.
+
+The web UI deliberately does not expose continuous loops, physical device controls, or the experimental blocking `scan` command. Its visual charts and generated sample values are illustrative only. Do not use the prototype to diagnose, prevent, monitor, or treat disease, or as a hardware safety control.
 
 ## Development and verification
 
